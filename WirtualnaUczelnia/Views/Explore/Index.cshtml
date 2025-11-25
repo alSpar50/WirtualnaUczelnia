@@ -5,78 +5,100 @@
     ViewData["Title"] = "Wirtualny Spacer";
 }
 
+<!-- Style dla strzałek nawigacyjnych -->
+<style>
+    .nav-arrow {
+        position: absolute;
+        transform: translate(-50%, -50%); /* Centrowanie punktu */
+        opacity: 0.8;
+        transition: transform 0.2s, opacity 0.2s;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        border: 2px solid white;
+        box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        z-index: 10;
+    }
+    .nav-arrow:hover {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 1;
+        cursor: pointer;
+    }
+    .image-container {
+        position: relative;
+        display: inline-block;
+        overflow: hidden;
+        border-radius: 8px;
+    }
+</style>
+
 <div class="container text-center mt-4">
     <div class="row">
-        <!-- Główny blok ze zdjęciem i nawigacją -->
-        <div class="col-md-8 offset-md-2">
+        <div class="col-md-10 offset-md-1">
 
-            <div class="card shadow-sm">
-                <!-- Zdjęcie lokalizacji -->
-                <div class="position-relative">
-                    <!-- Obrazek -->
-                    <img src="~/images/@Model.ImageFileName" class="card-img-top img-fluid" alt="@Model.Name" onerror="this.src='https://via.placeholder.com/800x600?text=Brak+Zdjecia'">
+            <div class="card shadow-lg">
+                <div class="card-body p-0">
 
-                    <!-- Overlay z przyciskami nawigacji (opcjonalnie można to zrobić jako mapę obrazkową, tu wersja prostsza z przyciskami na dole) -->
-                </div>
+                    <!-- Kontener na zdjęcie i strzałki -->
+                    <div class="image-container w-100 bg-dark">
 
-                <div class="card-body">
-                    <h2 class="card-title">@Model.Name</h2>
-                    <p class="card-text lead">@Model.Description</p>
+                        <!-- Zdjęcie -->
+                        <img src="~/images/@Model.ImageFileName" class="img-fluid w-100" alt="@Model.Name"
+                             onerror="this.src='https://via.placeholder.com/1200x800?text=Brak+Zdjecia'">
 
-                    <!-- Odtwarzacz Audio -->
-                    @if (!string.IsNullOrEmpty(Model.AudioFileName))
-                    {
-                        <div class="my-3">
-                            <audio controls autoplay>
-                                <source src="~/audio/@Model.AudioFileName" type="audio/mpeg">
-                                Twoja przeglądarka nie obsługuje elementu audio.
-                            </audio>
-                        </div>
-                    }
-
-                    <hr />
-
-                    <!-- Panel Nawigacji (Strzałki) -->
-                    <h4 class="mb-3">Gdzie chcesz iść?</h4>
-                    <div class="d-flex justify-content-center gap-3 flex-wrap">
+                        <!-- Strzałki Nawigacyjne -->
                         @foreach (var transition in Model.Transitions)
                         {
-                            string btnClass = "btn-primary";
-                            string icon = "";
+                            string btnClass = "btn-light"; // Domyślny kolor
+                            string icon = "⬆️";
 
                             switch (transition.Direction)
                             {
                                 case WirtualnaUczelnia.Models.Direction.Forward:
                                     btnClass = "btn-success";
-                                    icon = "⬆️";
-                                    break;
+                                    icon = "⬆️"; break;
                                 case WirtualnaUczelnia.Models.Direction.Back:
                                     btnClass = "btn-secondary";
-                                    icon = "⬇️";
-                                    break;
+                                    icon = "⬇️"; break;
                                 case WirtualnaUczelnia.Models.Direction.Left:
                                     btnClass = "btn-info";
-                                    icon = "⬅️";
-                                    break;
+                                    icon = "⬅️"; break;
                                 case WirtualnaUczelnia.Models.Direction.Right:
                                     btnClass = "btn-info";
-                                    icon = "➡️";
-                                    break;
+                                    icon = "➡️"; break;
                             }
 
-                            <a asp-action="Index" asp-route-id="@transition.TargetLocationId" class="btn @btnClass btn-lg px-4">
-                                @icon @transition.Direction.GetDisplayName()
+                            <!-- Pozycjonowanie przycisku na podstawie X i Y z bazy -->
+                            <a asp-action="Index" asp-route-id="@transition.TargetLocationId"
+                               class="btn @btnClass nav-arrow"
+                               style="left: @transition.PositionX%; top: @transition.PositionY%;"
+                               title="@transition.Direction.GetDisplayName()">
+                                @icon
                             </a>
                         }
                     </div>
+
+                </div>
+                <div class="card-footer">
+                    <h2 class="card-title">@Model.Name</h2>
+                    <p class="card-text lead">@Model.Description</p>
+
+                    @if (!string.IsNullOrEmpty(Model.AudioFileName))
+                    {
+                        <div class="my-2">
+                            <audio controls autoplay style="width: 100%;">
+                                <source src="~/audio/@Model.AudioFileName" type="audio/mpeg">
+                                Twój lektor nie działa.
+                            </audio>
+                        </div>
+                    }
                 </div>
             </div>
 
         </div>
     </div>
 </div>
-
-<!-- Helper do wyświetlania nazw enumów, można przenieść do osobnej klasy statycznej -->
-@functions {
-    // To powinno być w osobnym helperze, ale dla uproszczenia widoku jest tutaj
-}

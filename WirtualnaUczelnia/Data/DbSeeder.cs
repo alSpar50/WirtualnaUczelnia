@@ -60,47 +60,59 @@ namespace WirtualnaUczelnia.Data
                     {
                         SourceLocationId = locWejscie.Id,
                         TargetLocationId = locHol.Id,
-                        Direction = Direction.Forward
+                        Direction = Direction.Forward,
+                        PositionX = 50,
+                        PositionY = 40
                     });
 
-                    // Z Holu -> W tył -> Wejście
+                    // Hol -> Wejście (Strzałka w dół)
                     context.Transitions.Add(new Transition
                     {
                         SourceLocationId = locHol.Id,
                         TargetLocationId = locWejscie.Id,
-                        Direction = Direction.Back
+                        Direction = Direction.Back,
+                        PositionX = 50,
+                        PositionY = 90
                     });
 
-                    // Z Holu -> W lewo -> Portiernia
+                    // Hol -> Portiernia (Strzałka w lewo)
                     context.Transitions.Add(new Transition
                     {
                         SourceLocationId = locHol.Id,
                         TargetLocationId = locPortiernia.Id,
-                        Direction = Direction.Left
+                        Direction = Direction.Left,
+                        PositionX = 10,
+                        PositionY = 60
                     });
 
-                    // Z Portierni -> W prawo -> Hol
+                    // Portiernia -> Hol (Strzałka w prawo)
                     context.Transitions.Add(new Transition
                     {
                         SourceLocationId = locPortiernia.Id,
                         TargetLocationId = locHol.Id,
-                        Direction = Direction.Right // Wracamy do holu
+                        Direction = Direction.Right,
+                        PositionX = 90,
+                        PositionY = 60
                     });
 
-                    // Z Holu -> Prosto -> Schody
+                    // Hol -> Schody (Strzałka w górę/lekko prawo)
                     context.Transitions.Add(new Transition
                     {
                         SourceLocationId = locHol.Id,
                         TargetLocationId = locSchody.Id,
-                        Direction = Direction.Forward
+                        Direction = Direction.Forward,
+                        PositionX = 70,
+                        PositionY = 40
                     });
 
-                    // Z Schodów -> W tył -> Hol
+                    // Schody -> Hol (Strzałka w dół)
                     context.Transitions.Add(new Transition
                     {
                         SourceLocationId = locSchody.Id,
                         TargetLocationId = locHol.Id,
-                        Direction = Direction.Back
+                        Direction = Direction.Back,
+                        PositionX = 50,
+                        PositionY = 90
                     });
 
                     context.SaveChanges();
