@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using WirtualnaUczelnia.Data;
 using WirtualnaUczelnia.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace WirtualnaUczelnia.Controllers
 {
+    [Authorize]
     public class TransitionsController : Controller
     {
         private readonly ApplicationDbContext _context;

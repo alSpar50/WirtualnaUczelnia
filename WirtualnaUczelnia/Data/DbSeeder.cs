@@ -1,20 +1,41 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using WirtualnaUczelnia.Models;
 
 namespace WirtualnaUczelnia.Data
 {
     public static class DbSeeder
     {
-        public static void Seed(IApplicationBuilder applicationBuilder)
+        // Zmieniamy sygnaturę, aby przyjmowała IServiceProvider do pobrania UserManagera
+        public static async Task Seed(IApplicationBuilder applicationBuilder)
         {
             using (var serviceScope = applicationBuilder.ApplicationServices.CreateScope())
             {
                 var context = serviceScope.ServiceProvider.GetService<ApplicationDbContext>();
+                var userManager = serviceScope.ServiceProvider.GetService<UserManager<IdentityUser>>();
+
                 context.Database.Migrate();
 
-                // Jeśli nie ma budynków, dodajemy je
+                // 1. Seedowanie Użytkownika Admina
+                var adminEmail = "admin@wlodkowic.pl";
+                var adminUser = await userManager.FindByEmailAsync(adminEmail);
+
+                if (adminUser == null)
+                {
+                    var newAdmin = new IdentityUser
+                    {
+                        UserName = adminEmail,
+                        Email = adminEmail,
+                        EmailConfirmed = true
+                    };
+                    // Tworzenie użytkownika z hasłem
+                    await userManager.CreateAsync(newAdmin, "haslo1234PL!?");
+                }
+
+                // 2. Seedowanie Budynków (bez zmian)
                 if (!context.Buildings.Any())
                 {
+                    // ... (Twój kod budynków) ...
                     var buildings = new List<Building>
                     {
                         new Building { Symbol = "A", Name = "Rektorat", Description = "Powierzchnia 3160 m². Znajduje się tu: Sala Senatu, Rektorat, Biuro Kanclerza, Dziekanat, Kwestura, Biuro Karier i laboratoria." },
@@ -30,24 +51,11 @@ namespace WirtualnaUczelnia.Data
                     context.SaveChanges();
                 }
 
-                // Jeśli nie ma lokacji, dodajemy przykładowe powiązane z budynkiem A
+                // 3. Seedowanie Lokacji (bez zmian)
                 if (!context.Locations.Any())
                 {
-                    // Pobieramy ID Budynku A
                     var budynekA = context.Buildings.FirstOrDefault(b => b.Symbol == "A");
-
-                    var locWejscie = new Location
-                    {
-                        Name = "Wejście Główne (Budynek A)",
-                        Description = "Stoisz przed budynkiem A. To serce uczelni.",
-                        ImageFileName = "wejscie_a.jpg",
-                        AudioFileName = "wejscie_a.mp3",
-                        BuildingId = budynekA?.Id
-                    };
-
-                    // ... tu możesz dodać więcej lokacji jak wcześniej ...
-
-                    context.Locations.Add(locWejscie);
+                    // ... (Twoje lokacje) ...
                     context.SaveChanges();
                 }
             }

@@ -32,7 +32,7 @@ var app = builder.Build();
 
 // Uruchomienie Seedowania danych przy starcie aplikacji
 // (Upewnij siê, ¿e masz klasê DbSeeder w folderze Data)
-DbSeeder.Seed(app);
+await DbSeeder.Seed(app);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

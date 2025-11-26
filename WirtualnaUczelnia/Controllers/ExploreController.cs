@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using WirtualnaUczelnia.Data;
 using WirtualnaUczelnia.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace WirtualnaUczelnia.Controllers
 {

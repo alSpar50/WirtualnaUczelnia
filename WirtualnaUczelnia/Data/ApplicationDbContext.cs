@@ -1,19 +1,24 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WirtualnaUczelnia.Models;
 
 namespace WirtualnaUczelnia.Data
 {
-    // Użycie Primary Constructor (C# 12) eliminuje ostrzeżenie "Użyj konstruktora podstawowego"
-    public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
+    // ZMIANA: Dziedziczymy po IdentityDbContext (co oznacza IdentityUser domyślnie)
+    public class ApplicationDbContext : IdentityDbContext
     {
-        // Te dwie linie są kluczowe - one tworzą tabele w bazie!
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+
         public DbSet<Building> Buildings { get; set; }
         public DbSet<Location> Locations { get; set; }
         public DbSet<Transition> Transitions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder);
+            base.OnModelCreating(modelBuilder); // TO JEST KLUCZOWE DLA IDENTITY!
 
             // Konfiguracja relacji
             modelBuilder.Entity<Transition>()
