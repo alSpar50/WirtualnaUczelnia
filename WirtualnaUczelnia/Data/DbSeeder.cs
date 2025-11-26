@@ -10,111 +10,44 @@ namespace WirtualnaUczelnia.Data
             using (var serviceScope = applicationBuilder.ApplicationServices.CreateScope())
             {
                 var context = serviceScope.ServiceProvider.GetService<ApplicationDbContext>();
-
-                // Jeśli baza nie istnieje, tworzy ją. Jeśli są migracje, aplikuje je.
                 context.Database.Migrate();
 
-                // Sprawdź, czy są już jakieś lokalizacje. Jeśli tak, nic nie rób.
+                // Jeśli nie ma budynków, dodajemy je
+                if (!context.Buildings.Any())
+                {
+                    var buildings = new List<Building>
+                    {
+                        new Building { Symbol = "A", Name = "Rektorat", Description = "Powierzchnia 3160 m². Znajduje się tu: Sala Senatu, Rektorat, Biuro Kanclerza, Dziekanat, Kwestura, Biuro Karier i laboratoria." },
+                        new Building { Symbol = "B", Name = "Budynek B", Description = "Powierzchnia 912 m². Znajduje się tu: Szkoła 'Profesor', biuro Parlamentu Studentów, PCK, Redakcja gazety Per Contra." },
+                        new Building { Symbol = "C", Name = "Budynek C", Description = "Powierzchnia 1120 m². Znajdują się tu: dwie aule, sale wykładowe, księgarnia akademicka." },
+                        new Building { Symbol = "D", Name = "Biblioteka", Description = "Powierzchnia 897 m². Znajduje się tu: biblioteka z czytelnią, wypożyczalnia oraz stanowiska komputerowe." },
+                        new Building { Symbol = "E", Name = "Wydział Pedagogiczny", Description = "Powierzchnia 1696 m². Znajduje się tu: Sekretariat Wydziału Pedagogicznego, aule, sale ćwiczeniowe i pracownia psychologiczna." },
+                        new Building { Symbol = "F", Name = "Budynek F", Description = "Powierzchnia 1680 m². Mieści szkoły 'Profesor', aulę, sale wykładowe i pracownie komputerowe." },
+                        new Building { Symbol = "G", Name = "Studium Języków Obcych", Description = "Powierzchnia 1320 m². Mieści: Studium Języków Obcych, laboratoria językowe, chór akademicki i archiwum." },
+                        new Building { Symbol = "H", Name = "Centrum Sportowo-Rekreacyjne", Description = "Powierzchnia 3356 m². Hala sportowa, siłownia, sauny, gabinet kosmetyczny. Budynek w pełni przystosowany dla niepełnosprawnych." }
+                    };
+                    context.Buildings.AddRange(buildings);
+                    context.SaveChanges();
+                }
+
+                // Jeśli nie ma lokacji, dodajemy przykładowe powiązane z budynkiem A
                 if (!context.Locations.Any())
                 {
-                    // 1. Tworzymy Lokalizacje
+                    // Pobieramy ID Budynku A
+                    var budynekA = context.Buildings.FirstOrDefault(b => b.Symbol == "A");
+
                     var locWejscie = new Location
                     {
-                        Name = "Wejście Główne",
-                        Description = "Stoisz przed głównym wejściem do uczelni. Widzisz duże szklane drzwi.",
-                        ImageFileName = "wejscie.jpg", // Pamiętaj, żeby wgrać taki plik do wwwroot/images!
-                        AudioFileName = "wejscie.mp3"
+                        Name = "Wejście Główne (Budynek A)",
+                        Description = "Stoisz przed budynkiem A. To serce uczelni.",
+                        ImageFileName = "wejscie_a.jpg",
+                        AudioFileName = "wejscie_a.mp3",
+                        BuildingId = budynekA?.Id
                     };
 
-                    var locHol = new Location
-                    {
-                        Name = "Hol Główny",
-                        Description = "Jesteś w przestronnym holu. Na wprost widzisz schody, po lewej portiernię.",
-                        ImageFileName = "hol.jpg",
-                        AudioFileName = "hol.mp3"
-                    };
+                    // ... tu możesz dodać więcej lokacji jak wcześniej ...
 
-                    var locPortiernia = new Location
-                    {
-                        Name = "Portiernia",
-                        Description = "Tutaj możesz odebrać klucze. Pani portierka uśmiecha się do Ciebie.",
-                        ImageFileName = "portiernia.jpg",
-                        AudioFileName = "portiernia.mp3"
-                    };
-
-                    var locSchody = new Location
-                    {
-                        Name = "Schody na 1. piętro",
-                        Description = "Schody prowadzą do sal wykładowych i dziekanatu.",
-                        ImageFileName = "schody.jpg",
-                        AudioFileName = "schody.mp3"
-                    };
-
-                    // Dodajemy lokalizacje do kontekstu (żeby dostały ID)
-                    context.Locations.AddRange(locWejscie, locHol, locPortiernia, locSchody);
-                    context.SaveChanges();
-
-                    // 2. Tworzymy Przejścia (Powiązania)
-                    // Z Wejścia -> Prosto -> Hol
-                    context.Transitions.Add(new Transition
-                    {
-                        SourceLocationId = locWejscie.Id,
-                        TargetLocationId = locHol.Id,
-                        Direction = Direction.Forward,
-                        PositionX = 50,
-                        PositionY = 40
-                    });
-
-                    // Hol -> Wejście (Strzałka w dół)
-                    context.Transitions.Add(new Transition
-                    {
-                        SourceLocationId = locHol.Id,
-                        TargetLocationId = locWejscie.Id,
-                        Direction = Direction.Back,
-                        PositionX = 50,
-                        PositionY = 90
-                    });
-
-                    // Hol -> Portiernia (Strzałka w lewo)
-                    context.Transitions.Add(new Transition
-                    {
-                        SourceLocationId = locHol.Id,
-                        TargetLocationId = locPortiernia.Id,
-                        Direction = Direction.Left,
-                        PositionX = 10,
-                        PositionY = 60
-                    });
-
-                    // Portiernia -> Hol (Strzałka w prawo)
-                    context.Transitions.Add(new Transition
-                    {
-                        SourceLocationId = locPortiernia.Id,
-                        TargetLocationId = locHol.Id,
-                        Direction = Direction.Right,
-                        PositionX = 90,
-                        PositionY = 60
-                    });
-
-                    // Hol -> Schody (Strzałka w górę/lekko prawo)
-                    context.Transitions.Add(new Transition
-                    {
-                        SourceLocationId = locHol.Id,
-                        TargetLocationId = locSchody.Id,
-                        Direction = Direction.Forward,
-                        PositionX = 70,
-                        PositionY = 40
-                    });
-
-                    // Schody -> Hol (Strzałka w dół)
-                    context.Transitions.Add(new Transition
-                    {
-                        SourceLocationId = locSchody.Id,
-                        TargetLocationId = locHol.Id,
-                        Direction = Direction.Back,
-                        PositionX = 50,
-                        PositionY = 90
-                    });
-
+                    context.Locations.Add(locWejscie);
                     context.SaveChanges();
                 }
             }

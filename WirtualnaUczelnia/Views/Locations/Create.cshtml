@@ -1,0 +1,61 @@
+@model WirtualnaUczelnia.Models.Location
+
+@{
+    ViewData["Title"] = "Dodaj lokacjê";
+}
+
+<h1>Dodaj now¹ lokacjê</h1>
+<hr />
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Create" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Name" class="control-label">Nazwa miejsca</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Description" class="control-label">Opis</label>
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="BuildingId" class="control-label">Budynek</label>
+                <select asp-for="BuildingId" class="form-control" asp-items="ViewBag.BuildingId">
+                    <option value="">-- Wybierz budynek --</option>
+                </select>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-light">Pliki Multimedialne</div>
+                <div class="card-body">
+                    <div class="form-group mb-3">
+                        <label class="control-label fw-bold">Zdjêcie</label>
+                        <input type="file" name="imageFile" class="form-control" accept="image/*" />
+                        <small class="text-muted">Wymagane. Obs³ugiwane formaty: .jpg, .png</small>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label fw-bold">Lektor (Audio)</label>
+                        <input type="file" name="audioFile" class="form-control" accept="audio/*" />
+                        <small class="text-muted">Opcjonalne. Format: .mp3</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <input type="submit" value="Utwórz" class="btn btn-primary" />
+                <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

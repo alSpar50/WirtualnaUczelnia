@@ -1,0 +1,92 @@
+@model WirtualnaUczelnia.Models.Location
+
+@{
+    ViewData["Title"] = "Edytuj lokacjê";
+}
+
+<h1>Edytuj lokacjê</h1>
+<hr />
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Edit" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+            <!-- Te pola s¹ ukryte, ale wa¿ne - przechowuj¹ stare nazwy, jeœli u¿ytkownik nie wgra nowych -->
+            <input type="hidden" asp-for="ImageFileName" />
+            <input type="hidden" asp-for="AudioFileName" />
+
+            <div class="form-group mb-3">
+                <label asp-for="Name" class="control-label">Nazwa miejsca</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Description" class="control-label">Opis</label>
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="BuildingId" class="control-label">Budynek</label>
+                <select asp-for="BuildingId" class="form-control" asp-items="ViewBag.BuildingId">
+                    <option value="">-- Wybierz budynek --</option>
+                </select>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-light">Multimedia</div>
+                <div class="card-body">
+                    <!-- Sekcja Zdjêcia -->
+                    <div class="mb-3">
+                        <p class="mb-1"><strong>Obecne zdjêcie:</strong></p>
+                        @if (!string.IsNullOrEmpty(Model.ImageFileName))
+                        {
+                            <img src="~/images/@Model.ImageFileName" class="img-thumbnail mb-2" style="max-height: 150px;" />
+                            <div><small class="text-muted">Plik: @Model.ImageFileName</small></div>
+                        }
+                        else
+                        {
+                            <span class="text-warning">Brak zdjêcia</span>
+                        }
+
+                        <label class="control-label mt-2 fw-bold">Wgraj nowe zdjêcie (zast¹pi obecne):</label>
+                        <input type="file" name="imageFile" class="form-control" accept="image/*" />
+                    </div>
+
+                    <hr />
+
+                    <!-- Sekcja Audio -->
+                    <div class="mb-3">
+                        <p class="mb-1"><strong>Obecny lektor:</strong></p>
+                        @if (!string.IsNullOrEmpty(Model.AudioFileName))
+                        {
+                            <audio controls class="w-100 mb-2">
+                                <source src="~/audio/@Model.AudioFileName" type="audio/mpeg">
+                            </audio>
+                            <div><small class="text-muted">Plik: @Model.AudioFileName</small></div>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Brak pliku audio</span>
+                        }
+
+                        <label class="control-label mt-2 fw-bold">Wgraj nowy plik audio:</label>
+                        <input type="file" name="audioFile" class="form-control" accept="audio/*" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <input type="submit" value="Zapisz zmiany" class="btn btn-success" />
+                <a asp-action="Index" class="btn btn-secondary">Powrót</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

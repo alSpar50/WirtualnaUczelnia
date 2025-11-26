@@ -7,6 +7,7 @@ namespace WirtualnaUczelnia.Data
     public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
     {
         // Te dwie linie są kluczowe - one tworzą tabele w bazie!
+        public DbSet<Building> Buildings { get; set; }
         public DbSet<Location> Locations { get; set; }
         public DbSet<Transition> Transitions { get; set; }
 

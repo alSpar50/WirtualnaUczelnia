@@ -5,94 +5,118 @@
     ViewData["Title"] = "Wirtualny Spacer";
 }
 
-<!-- Style dla strzałek nawigacyjnych -->
 <style>
     .nav-arrow {
         position: absolute;
-        transform: translate(-50%, -50%); /* Centrowanie punktu */
-        opacity: 0.8;
+        transform: translate(-50%, -50%);
+        opacity: 0.9;
         transition: transform 0.2s, opacity 0.2s;
         border-radius: 50%;
-        width: 50px;
-        height: 50px;
+        width: 60px;
+        height: 60px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
-        border: 2px solid white;
-        box-shadow: 0 0 10px rgba(0,0,0,0.5);
-        z-index: 10;
+        font-size: 30px;
+        border: 3px solid white;
+        box-shadow: 0 0 15px rgba(0,0,0,0.7);
+        z-index: 100;
+        background-color: rgba(0,0,0,0.5);
+        color: white;
+        text-decoration: none;
     }
-    .nav-arrow:hover {
-        transform: translate(-50%, -50%) scale(1.2);
-        opacity: 1;
-        cursor: pointer;
-    }
+
+        .nav-arrow:hover {
+            transform: translate(-50%, -50%) scale(1.2);
+            opacity: 1;
+            background-color: rgba(0,0,0,0.8);
+            color: #ffd700;
+        }
+
     .image-container {
         position: relative;
-        display: inline-block;
+        display: block;
+        width: 100%;
         overflow: hidden;
         border-radius: 8px;
+        background-color: #eee;
+        min-height: 400px;
     }
 </style>
 
 <div class="container text-center mt-4">
+
+    <!-- Przycisk powrotu do wyboru budynku -->
+    <div class="text-start mb-3">
+        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">
+            &larr; Powrót do mapy kampusu
+        </a>
+    </div>
+
     <div class="row">
-        <div class="col-md-10 offset-md-1">
+        <div class="col-md-12">
 
             <div class="card shadow-lg">
                 <div class="card-body p-0">
 
                     <!-- Kontener na zdjęcie i strzałki -->
-                    <div class="image-container w-100 bg-dark">
+                    <div class="image-container">
 
                         <!-- Zdjęcie -->
                         <img src="~/images/@Model.ImageFileName" class="img-fluid w-100" alt="@Model.Name"
-                             onerror="this.src='https://via.placeholder.com/1200x800?text=Brak+Zdjecia'">
+                             onerror="this.onerror=null; this.src='https://via.placeholder.com/1200x600?text=Brak+pliku:+@Model.ImageFileName';">
 
-                        <!-- Strzałki Nawigacyjne -->
-                        @foreach (var transition in Model.Transitions)
+                        <!-- Informacja o braku przejść -->
+                        @if (Model.Transitions == null || !Model.Transitions.Any())
                         {
-                            string btnClass = "btn-light"; // Domyślny kolor
-                            string icon = "⬆️";
-
-                            switch (transition.Direction)
+                            <div class="alert alert-warning position-absolute top-50 start-50 translate-middle">
+                                Brak zdefiniowanych przejść (strzałek) dla tej lokacji.
+                                <br>
+                                <!-- ZMIANA: Link prowadzi teraz do listy lokacji, gdzie można zarządzać ich zdjęciami i innymi danymi -->
+                                <a asp-controller="Locations" asp-action="Index" class="btn btn-sm btn-warning mt-2">Zarządzaj Lokalizacjami</a>
+                                <!-- Opcjonalnie możesz dodać drugi link do zarządzania przejściami -->
+                                <a asp-controller="Transitions" asp-action="Index" class="btn btn-sm btn-secondary mt-2">Zarządzaj Przejściami</a>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Strzałki Nawigacyjne -->
+                            @foreach (var transition in Model.Transitions)
                             {
-                                case WirtualnaUczelnia.Models.Direction.Forward:
-                                    btnClass = "btn-success";
-                                    icon = "⬆️"; break;
-                                case WirtualnaUczelnia.Models.Direction.Back:
-                                    btnClass = "btn-secondary";
-                                    icon = "⬇️"; break;
-                                case WirtualnaUczelnia.Models.Direction.Left:
-                                    btnClass = "btn-info";
-                                    icon = "⬅️"; break;
-                                case WirtualnaUczelnia.Models.Direction.Right:
-                                    btnClass = "btn-info";
-                                    icon = "➡️"; break;
-                            }
+                                string arrowIcon = "⬆️";
+                                string title = "Idź";
 
-                            <!-- Pozycjonowanie przycisku na podstawie X i Y z bazy -->
-                            <a asp-action="Index" asp-route-id="@transition.TargetLocationId"
-                               class="btn @btnClass nav-arrow"
-                               style="left: @transition.PositionX%; top: @transition.PositionY%;"
-                               title="@transition.Direction.GetDisplayName()">
-                                @icon
-                            </a>
+                                switch (transition.Direction)
+                                {
+                                    case WirtualnaUczelnia.Models.Direction.Forward: arrowIcon = "⬆️"; title = "Prosto"; break;
+                                    case WirtualnaUczelnia.Models.Direction.Back: arrowIcon = "⬇️"; title = "W tył"; break;
+                                    case WirtualnaUczelnia.Models.Direction.Left: arrowIcon = "⬅️"; title = "W lewo"; break;
+                                    case WirtualnaUczelnia.Models.Direction.Right: arrowIcon = "➡️"; title = "W prawo"; break;
+                                }
+
+                                <!-- Pozycjonowanie -->
+                                <a asp-action="Index" asp-route-id="@transition.TargetLocationId"
+                                   class="nav-arrow"
+                                   style="left: @transition.PositionX%; top: @transition.PositionY%;"
+                                   title="@title">
+                                    @arrowIcon
+                                </a>
+                            }
                         }
                     </div>
 
                 </div>
-                <div class="card-footer">
+                <div class="card-footer text-start">
                     <h2 class="card-title">@Model.Name</h2>
                     <p class="card-text lead">@Model.Description</p>
 
                     @if (!string.IsNullOrEmpty(Model.AudioFileName))
                     {
-                        <div class="my-2">
-                            <audio controls autoplay style="width: 100%;">
+                        <div class="my-2 p-2 bg-light rounded border">
+                            <strong>Lektor:</strong>
+                            <audio controls class="w-100 mt-1">
                                 <source src="~/audio/@Model.AudioFileName" type="audio/mpeg">
-                                Twój lektor nie działa.
+                                Twój lektor nie działa (plik: @Model.AudioFileName).
                             </audio>
                         </div>
                     }

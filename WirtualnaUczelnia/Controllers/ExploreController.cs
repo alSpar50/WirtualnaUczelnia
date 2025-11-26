@@ -14,6 +14,22 @@ namespace WirtualnaUczelnia.Controllers
             _context = context;
         }
 
+        public async Task<IActionResult> StartInBuilding(int buildingId)
+        {
+            // Znajdź pierwszą lokację przypisaną do tego budynku
+            var startLocation = await _context.Locations
+                .Include(l => l.Transitions)
+                .FirstOrDefaultAsync(l => l.BuildingId == buildingId);
+
+            if (startLocation == null)
+            {
+                return Content("Ten budynek nie ma jeszcze zdefiniowanych zdjęć/lokacji. Dodaj je w panelu administratora.");
+            }
+
+            // Przekieruj do widoku zwiedzania z tą lokacją
+            return RedirectToAction("Index", new { id = startLocation.Id });
+        }
+
         // Akcja domyślna - start wycieczki (np. od lokalizacji o ID 1 lub pierwszej znalezionej)
         public async Task<IActionResult> Index(int? id)
         {

@@ -19,9 +19,15 @@ namespace WirtualnaUczelnia.Models
         public string ImageFileName { get; set; } // np. "hol_glowny.jpg"
 
         [Display(Name = "Plik audio")]
-        public string AudioFileName { get; set; } // np. "hol_lektor.mp3"
+        public string? AudioFileName { get; set; } // np. "hol_lektor.mp3"
 
         // Nawigacja - możliwe przejścia z tego miejsca
         public virtual ICollection<Transition> Transitions { get; set; }
+
+        // Relacja do Budynku (Opcjonalna, bo może być np. "Dziedziniec" nieprzypisany do budynku)
+        [Display(Name = "Budynek")]
+        public int? BuildingId { get; set; }
+
+        public virtual Building? Building { get; set; }
     }
 }
