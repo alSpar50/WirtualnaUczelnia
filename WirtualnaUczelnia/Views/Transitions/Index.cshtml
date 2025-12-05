@@ -25,7 +25,11 @@
                 <td>@(item.TargetLocation?.Name ?? "Brak")</td>
                 <td>@item.Direction</td>
                 <td>@item.PositionX% / @item.PositionY%</td>
+                
                 <td>
+                    <!-- NOWY PRZYCISK EDYCJI -->
+                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Edytuj</a>
+
                     <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">Usuñ</a>
                 </td>
             </tr>

@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace WirtualnaUczelnia.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class TransitionsController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -49,9 +49,9 @@ namespace WirtualnaUczelnia.Controllers
         // POST: Transitions/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Direction,PositionX,PositionY,SourceLocationId,TargetLocationId")] Transition transition)
+        // DODANO: "IsWheelchairAccessible" do listy Bind
+        public async Task<IActionResult> Create([Bind("Id,Direction,PositionX,PositionY,SourceLocationId,TargetLocationId,IsWheelchairAccessible")] Transition transition)
         {
-            // Usuwamy walidacjê obiektów nawigacyjnych, bo formularz przesy³a tylko ID
             ModelState.Remove("SourceLocation");
             ModelState.Remove("TargetLocation");
 
@@ -62,7 +62,7 @@ namespace WirtualnaUczelnia.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // W razie b³êdu przywracamy dane do widoku
+            // Przywracanie danych do widoku w razie b³êdu
             var locations = _context.Locations.Select(l => new { l.Id, l.Name, l.ImageFileName }).ToList();
             ViewData["SourceLocationId"] = new SelectList(locations, "Id", "Name", transition.SourceLocationId);
             ViewData["TargetLocationId"] = new SelectList(locations, "Id", "Name", transition.TargetLocationId);
@@ -94,7 +94,8 @@ namespace WirtualnaUczelnia.Controllers
         // POST: Transitions/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Direction,PositionX,PositionY,SourceLocationId,TargetLocationId")] Transition transition)
+        // DODANO: "IsWheelchairAccessible" do listy Bind
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Direction,PositionX,PositionY,SourceLocationId,TargetLocationId,IsWheelchairAccessible")] Transition transition)
         {
             if (id != transition.Id) return NotFound();
 
@@ -119,6 +120,10 @@ namespace WirtualnaUczelnia.Controllers
             var locations = _context.Locations.Select(l => new { l.Id, l.Name, l.ImageFileName }).ToList();
             ViewData["SourceLocationId"] = new SelectList(locations, "Id", "Name", transition.SourceLocationId);
             ViewData["TargetLocationId"] = new SelectList(locations, "Id", "Name", transition.TargetLocationId);
+
+            var imageMap = locations.ToDictionary(k => k.Id.ToString(), v => v.ImageFileName);
+            ViewBag.ImageMap = System.Text.Json.JsonSerializer.Serialize(imageMap);
+
             return View(transition);
         }
 

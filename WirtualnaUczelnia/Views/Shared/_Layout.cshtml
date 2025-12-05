@@ -1,5 +1,6 @@
 ﻿@using Microsoft.AspNetCore.Identity
 @inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
 
 <!DOCTYPE html>
 <html lang="pl">
@@ -38,8 +39,15 @@
                             </a>
                         </li>
 
-                        <!-- Menu Administratora - TYLKO DLA ZALOGOWANYCH -->
-                        @if (SignInManager.IsSignedIn(User))
+                        <!-- Link do nawigacji (dla każdego) -->
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="Navigation" asp-action="Index">
+                                <i class="bi bi-compass"></i> Znajdź drogę
+                            </a>
+                        </li>
+
+                        <!-- Menu Administratora - TYLKO DLA KONKRETNEGO MAILA LUB ROLI -->
+                        @if (SignInManager.IsSignedIn(User) && User.Identity.Name == "admin@wlodkowic.pl")
                         {
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle text-danger fw-bold" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -48,13 +56,13 @@
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                                     <li><a class="dropdown-item" asp-controller="Buildings" asp-action="Index">Zarządzaj Budynkami</a></li>
                                     <li><a class="dropdown-item" asp-controller="Locations" asp-action="Index">Zarządzaj Lokacjami</a></li>
+                                    <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" asp-controller="Transitions" asp-action="Index">Zarządzaj Przejściami</a></li>
                                 </ul>
                             </li>
                         }
                     </ul>
 
-                    <!-- Częściowy widok logowania (tylko informacja o zalogowanym użytkowniku i wylogowanie) -->
                     <partial name="_LoginPartial" />
                 </div>
             </div>
@@ -74,11 +82,11 @@
             </div>
 
             <div>
-                <!-- Link Logowania w stopce -->
+                <!-- Link Logowania w stopce (ukryty dla zalogowanych) -->
                 @if (!SignInManager.IsSignedIn(User))
                 {
                     <a class="text-muted small" asp-area="Identity" asp-page="/Account/Login">
-                        <i class="bi bi-lock-fill"></i> Panel Admina (Logowanie)
+                        <i class="bi bi-lock-fill"></i> Zaloguj
                     </a>
                 }
             </div>

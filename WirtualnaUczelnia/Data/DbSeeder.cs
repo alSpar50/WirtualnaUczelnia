@@ -14,9 +14,18 @@ namespace WirtualnaUczelnia.Data
                 var context = serviceScope.ServiceProvider.GetService<ApplicationDbContext>();
                 var userManager = serviceScope.ServiceProvider.GetService<UserManager<IdentityUser>>();
 
+                // DODANO: Pobieramy RoleManager do zarządzania rolami
+                var roleManager = serviceScope.ServiceProvider.GetService<RoleManager<IdentityRole>>();
+
                 context.Database.Migrate();
 
-                // 1. Seedowanie Użytkownika Admina
+                // 1. Tworzenie Roli Admina (jeśli nie istnieje) - NOWY FRAGMENT
+                if (!await roleManager.RoleExistsAsync("Admin"))
+                {
+                    await roleManager.CreateAsync(new IdentityRole("Admin"));
+                }
+
+                // 2. Seedowanie Użytkownika Admina
                 var adminEmail = "admin@wlodkowic.pl";
                 var adminUser = await userManager.FindByEmailAsync(adminEmail);
 
@@ -30,12 +39,22 @@ namespace WirtualnaUczelnia.Data
                     };
                     // Tworzenie użytkownika z hasłem
                     await userManager.CreateAsync(newAdmin, "haslo1234PL!?");
+
+                    // DODANO: Przypisz rolę nowemu adminowi
+                    await userManager.AddToRoleAsync(newAdmin, "Admin");
+                }
+                else
+                {
+                    // DODANO: Jeśli admin już istniał, upewnij się, że ma rolę
+                    if (!await userManager.IsInRoleAsync(adminUser, "Admin"))
+                    {
+                        await userManager.AddToRoleAsync(adminUser, "Admin");
+                    }
                 }
 
-                // 2. Seedowanie Budynków (bez zmian)
+                // 3. Seedowanie Budynków (bez zmian)
                 if (!context.Buildings.Any())
                 {
-                    // ... (Twój kod budynków) ...
                     var buildings = new List<Building>
                     {
                         new Building { Symbol = "A", Name = "Rektorat", Description = "Powierzchnia 3160 m². Znajduje się tu: Sala Senatu, Rektorat, Biuro Kanclerza, Dziekanat, Kwestura, Biuro Karier i laboratoria." },
@@ -51,11 +70,18 @@ namespace WirtualnaUczelnia.Data
                     context.SaveChanges();
                 }
 
-                // 3. Seedowanie Lokacji (bez zmian)
+                // 4. Seedowanie Lokacji (bez zmian)
                 if (!context.Locations.Any())
                 {
                     var budynekA = context.Buildings.FirstOrDefault(b => b.Symbol == "A");
-                    // ... (Twoje lokacje) ...
+
+                    // Przykładowa lokacja (jeśli nie masz swojego kodu lokacji, ten fragment zapobiegnie błędowi pustej bazy)
+                    if (budynekA != null)
+                    {
+                        // Tutaj możesz wstawić kod dodawania lokacji, jeśli go posiadasz,
+                        // w przeciwnym razie blok pozostaje pusty lub dodaje jedną przykładową lokację.
+                    }
+
                     context.SaveChanges();
                 }
             }

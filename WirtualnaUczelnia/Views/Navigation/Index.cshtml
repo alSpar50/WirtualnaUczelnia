@@ -1,0 +1,61 @@
+﻿@{
+    ViewData["Title"] = "Znajdź drogę";
+}
+
+
+<div class="card-body">
+    
+    @if (User.Identity.IsAuthenticated)
+    {
+        @if (ViewBag.IsDisabledUser)
+        {
+            <div class="alert alert-info border-info">
+                <i class="bi bi-person-wheelchair"></i> Tryb: <strong>Osoba z niepełnosprawnością</strong>
+                <br><small>Trasy będą omijać schody.</small>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-light border">
+                <i class="bi bi-person-walking"></i> Tryb: <strong>Standardowy</strong>
+                <br><small>Wszystkie trasy są dostępne.</small>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i> Nie jesteś zalogowany. System wyznaczy trasę standardową.
+        </div>
+    }
+
+
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h3 class="mb-0"><i class="bi bi-map"></i> Nawigacja po Uczelni</h3>
+            </div>
+            <div class="card-body">
+                <form asp-action="FindRoute">
+                    <div class="form-group mb-3">
+                        <label class="fw-bold">Gdzie jesteś?</label>
+                        <select name="startId" class="form-control" asp-items="ViewBag.Locations"></select>
+                    </div>
+
+                    <div class="text-center mb-3">
+                        <i class="bi bi-arrow-down-circle fs-3 text-muted"></i>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label class="fw-bold">Gdzie chcesz dojść?</label>
+                        <select name="endId" class="form-control" asp-items="ViewBag.Locations"></select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 btn-lg">Pokaż drogę</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

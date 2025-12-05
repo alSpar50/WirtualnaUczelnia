@@ -21,12 +21,14 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 // Zamiast AddDefaultIdentity, u¿ywamy pe³nej konfiguracji AddIdentity.
 // To rozwi¹zuje problem "No service for type UserManager".
 // Dodajemy te¿ AddDefaultUI, ¿eby dzia³a³y widoki logowania/rejestracji.
-builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = true)
+builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders()
     .AddDefaultUI();
 
 builder.Services.AddRazorPages(); // Wymagane dla Identity UI
+
+builder.Services.AddScoped<WirtualnaUczelnia.Services.PathFinderService>();
 
 var app = builder.Build();
 

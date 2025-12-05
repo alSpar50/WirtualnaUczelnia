@@ -15,19 +15,28 @@
 
             <div class="form-group mb-3">
                 <label class="control-label fw-bold">1. Sk¹d wychodzimy?</label>
-                <select asp-for="SourceLocationId" class="form-control" asp-items="ViewBag.SourceLocationId" id="sourceSelect">
+                <select asp-for="SourceLocationId" class="form-select" asp-items="ViewBag.SourceLocationId" id="sourceSelect">
                     <option value="">-- Wybierz --</option>
                 </select>
             </div>
 
             <div class="form-group mb-3">
                 <label class="control-label fw-bold">2. Dok¹d idziemy?</label>
-                <select asp-for="TargetLocationId" class="form-control" asp-items="ViewBag.TargetLocationId"></select>
+                <select asp-for="TargetLocationId" class="form-select" asp-items="ViewBag.TargetLocationId"></select>
             </div>
 
             <div class="form-group mb-3">
                 <label asp-for="Direction" class="control-label fw-bold">3. Rodzaj strza³ki</label>
-                <select asp-for="Direction" class="form-control" asp-items="Html.GetEnumSelectList<WirtualnaUczelnia.Models.Direction>()"></select>
+                <select asp-for="Direction" class="form-select" asp-items="Html.GetEnumSelectList<WirtualnaUczelnia.Models.Direction>()"></select>
+            </div>
+
+            <!-- NOWE POLE: Checkbox dostêpnoœci -->
+            <div class="form-check mb-3 p-3 bg-light border rounded">
+                <input class="form-check-input ms-1" asp-for="IsWheelchairAccessible" id="accessibilityCheck" checked style="transform: scale(1.3);" />
+                <label class="form-check-label fw-bold ms-2" for="accessibilityCheck">
+                    <i class="bi bi-person-wheelchair text-primary"></i> Dostêpne dla wózków
+                </label>
+                <div class="form-text ms-1 mt-1">Zostaw zaznaczone, jeœli jest p³asko lub jest winda. Odznacz, jeœli to schody.</div>
             </div>
 
             <div class="row mb-3">
@@ -59,7 +68,10 @@
             <div class="card-body p-0 bg-dark text-center d-flex align-items-center justify-content-center" style="min-height: 500px; overflow: hidden;">
 
                 <div id="imageContainer" style="position: relative; display: inline-block; cursor: crosshair;">
+                    <!-- Tutaj JavaScript wstawi zdjêcie -->
                     <img id="previewImage" src="" style="max-width: 100%; display: none;" />
+
+                    <!-- Czerwona kropka (marker) -->
                     <div id="marker" style="position: absolute; width: 30px; height: 30px; background: rgba(255,0,0,0.7); border: 3px solid white; border-radius: 50%; transform: translate(-50%, -50%); display: none; pointer-events: none; box-shadow: 0 0 10px black;"></div>
                 </div>
 
@@ -75,7 +87,9 @@
     }
 
     <script>
+        // Pobieramy JSON z nazwami plików z serwera
         var imageMap = @Html.Raw(ViewBag.ImageMap ?? "{}");
+
         var sourceSelect = document.getElementById("sourceSelect");
         var previewImage = document.getElementById("previewImage");
         var noImageMsg = document.getElementById("noImageMsg");
@@ -84,9 +98,11 @@
         var inpX = document.getElementById("posX");
         var inpY = document.getElementById("posY");
 
+        // Gdy zmienisz "Sk¹d", za³aduj zdjêcie
         sourceSelect.addEventListener("change", function() {
             var id = this.value;
             var fileName = imageMap[id];
+
             if (fileName) {
                 previewImage.src = "/images/" + fileName;
                 previewImage.style.display = "block";
@@ -98,17 +114,27 @@
             }
         });
 
+        // Gdy klikniesz w zdjêcie, oblicz % i ustaw marker
         imageContainer.addEventListener("click", function(e) {
             if (previewImage.style.display === "none") return;
+
             var rect = this.getBoundingClientRect();
             var x = e.clientX - rect.left;
             var y = e.clientY - rect.top;
+
+            // Obliczamy procenty
             var percentX = Math.round((x / rect.width) * 100);
             var percentY = Math.round((y / rect.height) * 100);
+
+            // Ograniczenie do 0-100
             percentX = Math.max(0, Math.min(100, percentX));
             percentY = Math.max(0, Math.min(100, percentY));
+
+            // Wpisz do inputów
             inpX.value = percentX;
             inpY.value = percentY;
+
+            // Przesuñ kropkê
             marker.style.left = percentX + "%";
             marker.style.top = percentY + "%";
             marker.style.display = "block";

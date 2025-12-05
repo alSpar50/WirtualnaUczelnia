@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace WirtualnaUczelnia.Controllers
 {
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class BuildingsController : Controller
     {
         private readonly ApplicationDbContext _context;
