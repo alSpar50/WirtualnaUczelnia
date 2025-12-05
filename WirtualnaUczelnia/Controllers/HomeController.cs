@@ -16,11 +16,28 @@ namespace WirtualnaUczelnia.Controllers
 
         public async Task<IActionResult> Index()
         {
-            // Pobieramy listê wszystkich budynków z bazy
             var buildings = await _context.Buildings.ToListAsync();
-
-            // Przekazujemy listê budynków do widoku (zgodnie z @model IEnumerable<Building>)
             return View(buildings);
+        }
+
+        // Akcja Wyszukiwania
+        public async Task<IActionResult> Search(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return RedirectToAction("Index");
+            }
+
+            // Szukamy w Lokacjach (Nazwa lub Opis)
+            // Contains w SQL Server domyœlnie ignoruje wielkoœæ liter (Case Insensitive)
+            // To proste dopasowanie - znajdzie "legitymacja" w "legitymacjami"
+            var results = await _context.Locations
+                .Include(l => l.Building)
+                .Where(l => l.Name.Contains(query) || (l.Description != null && l.Description.Contains(query)))
+                .ToListAsync();
+
+            ViewBag.Query = query;
+            return View(results);
         }
 
         public IActionResult Privacy()

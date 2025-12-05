@@ -8,9 +8,11 @@
 <hr />
 <div class="row">
     <div class="col-md-6">
-        <form asp-action="Edit">
+        <!-- WA¯NE: enctype jest niezbêdny -->
+        <form asp-action="Edit" enctype="multipart/form-data">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="ImageFileName" />
 
             <div class="form-group mb-3">
                 <label asp-for="Symbol" class="control-label">Symbol</label>
@@ -28,6 +30,26 @@
                 <label asp-for="Description" class="control-label">Opis</label>
                 <textarea asp-for="Description" class="form-control" rows="6"></textarea>
                 <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-body">
+                    <p><strong>Obecne zdjêcie:</strong></p>
+                    @if (!string.IsNullOrEmpty(Model.ImageFileName))
+                    {
+                        <img src="~/images/@Model.ImageFileName" class="img-thumbnail mb-2" style="max-height: 150px;" />
+                        <div><small class="text-muted">Plik: @Model.ImageFileName</small></div>
+                    }
+                    else
+                    {
+                        <span class="text-muted">Brak zdjêcia</span>
+                    }
+
+                    <div class="mt-2">
+                        <label class="control-label fw-bold">Zmieñ zdjêcie</label>
+                        <input type="file" name="imageFile" class="form-control" accept="image/*" />
+                    </div>
+                </div>
             </div>
 
             <div class="form-group">

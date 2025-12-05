@@ -4,32 +4,72 @@
     ViewData["Title"] = "Mapa Kampusu";
 }
 
-<div class="text-center mb-5">
-    <h1 class="display-4">Wirtualna Uczelnia SWPW</h1>
-    <p class="lead">Wybierz budynek, aby rozpocząć zwiedzanie.</p>
+<div class="text-center mb-5 pt-4">
+    <h1 class="display-3 fw-bold text-primary">Wirtualna Uczelnia</h1>
+    <p class="lead text-muted">Znajdź budynek lub wyszukaj konkretne miejsce.</p>
 </div>
 
-<div class="container">
-    <div class="row">
-        @foreach (var item in Model)
-        {
-            <div class="col-md-4 mb-4">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        <h3 class="m-0">Budynek @item.Symbol</h3>
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title">@item.Name</h5>
-                        <p class="card-text small">@item.Description</p>
-                    </div>
-                    <div class="card-footer bg-transparent border-0">
-                        <!-- Przycisk prowadzi do akcji StartInBuilding w ExploreController (musimy ją dodać!) -->
-                        <a asp-controller="Explore" asp-action="StartInBuilding" asp-route-buildingId="@item.Id" class="btn btn-outline-primary w-100">
-                            Wejdź do środka
+<!-- Wyszukiwarka -->
+<div class="row justify-content-center mb-5">
+    <div class="col-md-8">
+        <form asp-action="Search" method="get" class="d-flex shadow-sm p-1 bg-white rounded-pill border">
+            <input type="text" name="query" class="form-control border-0 rounded-pill px-4 shadow-none" placeholder="Czego szukasz? np. Dziekanat, legitymacja, aula..." style="height: 50px;">
+            <button type="submit" class="btn btn-primary rounded-pill px-4 m-1 fw-bold">
+                <i class="bi bi-search"></i> Szukaj
+            </button>
+        </form>
+    </div>
+</div>
+
+<h3 class="mb-4 ps-2 border-start border-4 border-primary">Wybierz budynek</h3>
+
+<div class="row g-4">
+    @foreach (var item in Model)
+    {
+        // Ustalmy tło - jeśli jest wgrane zdjęcie, użyj go, jeśli nie - szary kolor
+        string bgStyle = string.IsNullOrEmpty(item.ImageFileName)
+        ? "background-color: #e9ecef;"
+        : $"background-image: url('/images/{item.ImageFileName}'); background-size: cover; background-position: center;";
+
+        <div class="col-md-4">
+            <div class="card h-100 shadow border-0 overflow-hidden text-white card-hover-effect">
+
+                <!-- Obrazek jako tło karty -->
+                <div class="h-100 d-flex flex-column justify-content-end p-0" style="min-height: 250px; @bgStyle position: relative;">
+
+                    <!-- Ciemna nakładka (gradient) dla czytelności tekstu -->
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.1));"></div>
+
+                    <div class="card-body position-relative z-1">
+                        <div class="d-flex justify-content-between align-items-end">
+                            <div>
+                                <span class="badge bg-warning text-dark mb-2">Budynek @item.Symbol</span>
+                                <h4 class="card-title fw-bold text-shadow">@item.Name</h4>
+                                <p class="card-text small text-white-50" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                    @item.Description
+                                </p>
+                            </div>
+                        </div>
+                        <a asp-controller="Explore" asp-action="StartInBuilding" asp-route-buildingId="@item.Id" class="btn btn-light w-100 mt-3 fw-bold stretched-link">
+                            Wejdź do środka <i class="bi bi-arrow-right"></i>
                         </a>
                     </div>
                 </div>
             </div>
-        }
-    </div>
+        </div>
+    }
 </div>
+
+<style>
+    .card-hover-effect {
+        transition: transform 0.3s ease;
+    }
+
+        .card-hover-effect:hover {
+            transform: translateY(-5px);
+        }
+
+    .text-shadow {
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+    }
+</style>

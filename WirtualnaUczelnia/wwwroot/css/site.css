@@ -1,22 +1,43 @@
-html {
-  font-size: 14px;
-}
-
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-html {
-  position: relative;
-  min-height: 100%;
+/* Resetujemy wszystko */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
 }
 
 body {
-  margin-bottom: 60px;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Roboto', Verdana, sans-serif;
+    font-weight: 400;
+    min-height: 100vh; /* Minimalna wysokoœæ to 100% ekranu */
+}
+
+/* To jest kluczowe: main rozpycha siê, by zaj¹æ wolne miejsce */
+/* flex: 1 0 auto oznacza: roœnij (1), nie kurcz siê (0), rozmiar bazowy auto */
+main {
+    flex: 1 0 auto;
+    width: 100%; /* Upewniamy siê, ¿e zajmuje szerokoœæ */
+    padding-bottom: 40px; /* Dodajemy odstêp od stopki */
+}
+
+/* Stopka */
+footer {
+    flex-shrink: 0; /* Stopka nie mo¿e siê skurczyæ */
+    width: 100%;
+}
+
+/* Reszta stylów */
+@media (min-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Oswald', Verdana, 'Segoe UI', serif;
 }

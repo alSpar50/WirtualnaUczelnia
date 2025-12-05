@@ -30,6 +30,8 @@ builder.Services.AddRazorPages(); // Wymagane dla Identity UI
 
 builder.Services.AddScoped<WirtualnaUczelnia.Services.PathFinderService>();
 
+
+
 var app = builder.Build();
 
 // Uruchomienie Seedowania danych przy starcie aplikacji

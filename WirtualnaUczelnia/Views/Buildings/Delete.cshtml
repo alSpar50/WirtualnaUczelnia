@@ -6,10 +6,9 @@
 
 <h1>Usuñ budynek</h1>
 
+<p class="text-danger">@ViewData["ErrorMessage"]</p>
+
 <h3>Czy na pewno chcesz usun¹æ ten budynek?</h3>
-<div class="alert alert-danger">
-    <strong>Uwaga:</strong> Usuniêcie budynku mo¿e spowodowaæ problemy z lokacjami, które s¹ do niego przypisane!
-</div>
 
 <div>
     <h4>@Model.Name (Symbol: @Model.Symbol)</h4>
@@ -21,7 +20,7 @@
 
     <form asp-action="Delete">
         <input type="hidden" asp-for="Id" />
-        <input type="submit" value="Usuñ definitywnie" class="btn btn-danger" /> |
+        <input type="submit" value="Usuñ" class="btn btn-danger" /> |
         <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
     </form>
 </div>

@@ -17,6 +17,9 @@ namespace WirtualnaUczelnia.Models
         [Display(Name = "Opis")]
         public string Description { get; set; }
 
+        [Display(Name = "Zdjęcie budynku")]
+        public string? ImageFileName { get; set; } // <--- NOWE POLE
+
         // Lista lokacji w tym budynku
         public virtual ICollection<Location> Locations { get; set; } = new List<Location>();
     }
