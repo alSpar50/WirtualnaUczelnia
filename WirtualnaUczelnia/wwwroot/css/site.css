@@ -14,7 +14,6 @@ body {
 }
 
 /* To jest kluczowe: main rozpycha siê, by zaj¹æ wolne miejsce */
-/* flex: 1 0 auto oznacza: roœnij (1), nie kurcz siê (0), rozmiar bazowy auto */
 main {
     flex: 1 0 auto;
     width: 100%; /* Upewniamy siê, ¿e zajmuje szerokoœæ */
@@ -40,4 +39,33 @@ footer {
 
 h1, h2, h3, h4, h5, h6 {
     font-family: 'Oswald', Verdana, 'Segoe UI', serif;
+}
+
+/* --- SEKCJA DOSTÊPNOŒCI (WCAG) --- */
+
+/* 1. Skip Link - pozwala osobom niewidomym pomin¹æ menu i przejœæ do treœci */
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: 0;
+    background: #000000;
+    color: #ffffff;
+    padding: 10px;
+    z-index: 9999;
+    text-decoration: none;
+    font-weight: bold;
+    transition: top 0.2s;
+}
+
+    /* Link pojawia siê tylko gdy zostanie wybrany Tabulatorem */
+    .skip-link:focus {
+        top: 0;
+        outline: 4px solid #ffc107; /* ¯ó³ty kontrastowy obrys */
+    }
+
+/* 2. WyraŸny Focus - element wybrany Tabulatorem musi byæ bardzo widoczny */
+/* Dotyczy linków, przycisków, inputów i obrazków z tabindex */
+a:focus, button:focus, input:focus, select:focus, textarea:focus, [tabindex="0"]:focus {
+    outline: 4px solid #ffc107 !important; /* Gruba ¿ó³ta ramka */
+    outline-offset: 2px; /* Odsuniêcie ramki od elementu */
 }

@@ -4,6 +4,7 @@
 
 <!DOCTYPE html>
 <html lang="pl">
+ <!-- ZMIANA: Dodano atrybut języka dla czytników ekranu -->
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -18,36 +19,39 @@
     <link rel="stylesheet" href="~/WirtualnaUczelnia.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <!-- CZYSTE BODY, style są w site.css -->
+    <!-- ZMIANA: Skip Link dla dostępności (widoczny po wciśnięciu Tab) -->
+    <a href="#main-content" class="skip-link">Przejdź do głównej treści</a>
+
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <!-- Dodano role="navigation" dla lepszej semantyki -->
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3" role="navigation" aria-label="Menu główne">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
-                    <i class="bi bi-geo-alt-fill text-primary"></i> Wirtualna Uczelnia
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index" aria-label="Strona główna Wirtualnej Uczelni">
+                    <i class="bi bi-geo-alt-fill text-primary" aria-hidden="true"></i> Wirtualna Uczelnia
                 </a>
 
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                        aria-expanded="false" aria-label="Przełącz nawigację">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark fw-bold" href="https://www.wlodkowic.pl/" target="_blank">
-                                <i class="bi bi-globe"></i> Strona SWPW
+                            <a class="nav-link text-dark fw-bold" href="https://www.wlodkowic.pl/" target="_blank" aria-label="Otwórz stronę uczelni SWPW w nowej karcie">
+                                <i class="bi bi-globe" aria-hidden="true"></i> Strona SWPW
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Navigation" asp-action="Index">
-                                <i class="bi bi-compass"></i> Znajdź drogę
+                            <a class="nav-link text-dark" asp-controller="Navigation" asp-action="Index" aria-label="Wyszukiwarka drogi">
+                                <i class="bi bi-compass" aria-hidden="true"></i> Znajdź drogę
                             </a>
                         </li>
                         @if (SignInManager.IsSignedIn(User) && User.IsInRole("Admin"))
                         {
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle text-danger fw-bold" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-gear-fill"></i> Panel Administratora
+                                <a class="nav-link dropdown-toggle text-danger fw-bold" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">
+                                    <i class="bi bi-gear-fill" aria-hidden="true"></i> Panel Administratora
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                                     <li><a class="dropdown-item" asp-controller="Buildings" asp-action="Index">Zarządzaj Budynkami</a></li>
@@ -64,39 +68,61 @@
         </nav>
     </header>
 
-    <main>
-        <!-- CZYSTE MAIN, styl flex w site.css -->
+    <!-- ZMIANA: Dodano ID main-content dla Skip Linka -->
+    <main id="main-content">
         <div class="container">
             @RenderBody()
         </div>
     </main>
 
-    <footer class="bg-light border-top py-3 mt-auto">
-        <!-- mt-auto dodatkowo dopycha w dół w razie czego -->
+    <!--
+        ZMIANY W STOPCE DLA DOSTĘPNOŚCI:
+        1. tabindex="0" na elementach tekstowych (copyright, nagłówek autorów, lista) pozwala na ich wybór klawiaturą.
+        2. Czytnik przeczyta treść po zatrzymaniu się na elemencie.
+    -->
+    <footer class="bg-light border-top py-3 mt-auto" role="contentinfo" aria-label="Stopka strony">
         <div class="container">
             <div class="row align-items-center">
+
+                <!-- Lewa strona: Copyright i linki -->
                 <div class="col-md-4 text-center text-md-start mb-3 mb-md-0">
-                    <span class="text-muted">&copy; 2025 - Wirtualna Uczelnia SWPW</span>
-                    <br>
-                    <a asp-area="" asp-controller="Home" asp-action="Privacy" class="text-decoration-none small text-secondary">Prywatność</a>
-                    @if (!SignInManager.IsSignedIn(User))
-                    {
-                        <span class="mx-1">|</span>
-                        <a class="text-muted small text-decoration-none" asp-area="Identity" asp-page="/Account/Login">
-                            <i class="bi bi-lock-fill"></i> Zaloguj
+                    <!-- Ten tekst teraz będzie "chwytalny" przez Tab -->
+                    <span class="text-muted d-block mb-1" tabindex="0">
+                        &copy; 2025 - Wirtualna Uczelnia SWPW
+                    </span>
+
+                    <div>
+                        <a asp-area="" asp-controller="Home" asp-action="Privacy" class="text-decoration-none small text-secondary" aria-label="Polityka prywatności">
+                            Prywatność
                         </a>
-                    }
+
+                        @if (!SignInManager.IsSignedIn(User))
+                        {
+                            <span class="mx-1" aria-hidden="true">|</span>
+                            <a class="text-muted small text-decoration-none" asp-area="Identity" asp-page="/Account/Login" aria-label="Zaloguj się do panelu administratora">
+                                <i class="bi bi-lock-fill" aria-hidden="true"></i> Zaloguj
+                            </a>
+                        }
+                    </div>
                 </div>
+
+                <!-- Prawa strona: Autorzy -->
                 <div class="col-md-8 text-center text-md-end">
-                    <h6 class="text-uppercase text-primary mb-1" style="font-size: 0.8rem; letter-spacing: 1px;">Zespół Projektowy</h6>
-                    <ul class="list-inline mb-0">
-                        <li class="list-inline-item fw-bold">Albert Wróbel</li>
-                        <li class="list-inline-item text-muted">&bull;</li>
-                        <li class="list-inline-item fw-bold">Paulina Stankiewicz</li>
-                        <li class="list-inline-item text-muted">&bull;</li>
-                        <li class="list-inline-item fw-bold">Patryk Ambroziak</li>
+                    <!-- Nagłówek sekcji autorów też dostępny -->
+                    <h6 class="text-uppercase text-primary mb-1" style="font-size: 0.8rem; letter-spacing: 1px;" tabindex="0">
+                        Zespół Projektowy
+                    </h6>
+
+                    <!-- Lista autorów dostępna jako całość lub elementy (tutaj elementy) -->
+                    <ul class="list-inline mb-0" aria-label="Lista autorów projektu">
+                        <li class="list-inline-item fw-bold" tabindex="0">Albert Wróbel</li>
+                        <li class="list-inline-item text-muted" aria-hidden="true">&bull;</li>
+                        <li class="list-inline-item fw-bold" tabindex="0">Paulina Stankiewicz</li>
+                        <li class="list-inline-item text-muted" aria-hidden="true">&bull;</li>
+                        <li class="list-inline-item fw-bold" tabindex="0">Patryk Ambroziak</li>
                     </ul>
                 </div>
+
             </div>
         </div>
     </footer>

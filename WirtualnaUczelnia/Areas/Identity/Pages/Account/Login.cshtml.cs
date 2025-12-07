@@ -32,7 +32,7 @@ namespace WirtualnaUczelnia.Areas.Identity.Pages.Account
             public string Email { get; set; }
 
             [Required(ErrorMessage = "Pole Has³o jest wymagane.")]
-            [DataType(DataType.Password)] // To mówi formularzowi, ¿e to has³o
+            [DataType(DataType.Password)] // To mówi formularzowi, ¿e to pole has³a
             public string Password { get; set; }
 
             [Display(Name = "Zapamiêtaj mnie")]
@@ -48,7 +48,7 @@ namespace WirtualnaUczelnia.Areas.Identity.Pages.Account
 
             returnUrl ??= Url.Content("~/");
 
-            // Wyczyœæ ciasteczka zewnêtrzne
+            // Wyczyœæ ciasteczka zewnêtrzne (np. Google/Facebook), aby zapewniæ czysty proces logowania
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
 
             ReturnUrl = returnUrl;
@@ -60,6 +60,8 @@ namespace WirtualnaUczelnia.Areas.Identity.Pages.Account
 
             if (ModelState.IsValid)
             {
+                // Próba logowania
+                // lockoutOnFailure: false oznacza, ¿e konto nie zostanie zablokowane po nieudanych próbach (dla uproszczenia)
                 var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
 
                 if (result.Succeeded)
@@ -67,14 +69,15 @@ namespace WirtualnaUczelnia.Areas.Identity.Pages.Account
                     _logger.LogInformation("U¿ytkownik zalogowany.");
                     return LocalRedirect(returnUrl);
                 }
-                // Usun¹³em obs³ugê 2FA i blokady dla uproszczenia, skoro to prototyp
+                // Tutaj mo¿na obs³u¿yæ 2FA lub blokadê konta, ale dla uproszczenia pomijamy
                 else
                 {
-                    ModelState.AddModelError(string.Empty, "Nieudana próba logowania. SprawdŸ dane.");
+                    ModelState.AddModelError(string.Empty, "Nieudana próba logowania. SprawdŸ email i has³o.");
                     return Page();
                 }
             }
 
+            // Jeœli dotarliœmy tutaj, coœ posz³o nie tak (np. b³¹d walidacji), wyœwietl formularz ponownie
             return Page();
         }
     }
