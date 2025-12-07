@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Globalization;
 using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Identity;
@@ -11,29 +10,16 @@ namespace WirtualnaUczelnia.Areas.Identity.Pages.Account.Manage
     public class EnableAuthenticatorModel : PageModel
     {
         private readonly UserManager<IdentityUser> _userManager;
-        private readonly ILogger<EnableAuthenticatorModel> _logger;
         private readonly UrlEncoder _urlEncoder;
 
-        private const string AuthenticatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6";
-
-        public EnableAuthenticatorModel(
-            UserManager<IdentityUser> userManager,
-            ILogger<EnableAuthenticatorModel> logger,
-            UrlEncoder urlEncoder)
+        public EnableAuthenticatorModel(UserManager<IdentityUser> userManager, UrlEncoder urlEncoder)
         {
             _userManager = userManager;
-            _logger = logger;
             _urlEncoder = urlEncoder;
         }
 
         public string SharedKey { get; set; }
         public string AuthenticatorUri { get; set; }
-
-        [TempData]
-        public string[] RecoveryCodes { get; set; }
-
-        [TempData]
-        public string StatusMessage { get; set; }
 
         [BindProperty]
         public InputModel Input { get; set; }
@@ -41,7 +27,7 @@ namespace WirtualnaUczelnia.Areas.Identity.Pages.Account.Manage
         public class InputModel
         {
             [Required]
-            [StringLength(7, ErrorMessage = "{0} musi mieæ co najmniej {2} i maksymalnie {1} znaków.", MinimumLength = 6)]
+            [StringLength(7, MinimumLength = 6, ErrorMessage = "Kod musi mieæ 6 cyfr.")]
             [DataType(DataType.Text)]
             [Display(Name = "Kod weryfikacyjny")]
             public string Code { get; set; }
@@ -50,17 +36,16 @@ namespace WirtualnaUczelnia.Areas.Identity.Pages.Account.Manage
         public async Task<IActionResult> OnGetAsync()
         {
             var user = await _userManager.GetUserAsync(User);
-            if (user == null) return NotFound($"Nie mo¿na za³adowaæ u¿ytkownika o ID '{_userManager.GetUserId(User)}'.");
+            if (user == null) return NotFound("B³¹d ³adowania u¿ytkownika.");
 
             await LoadSharedKeyAndQrCodeUriAsync(user);
-
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
             var user = await _userManager.GetUserAsync(User);
-            if (user == null) return NotFound($"Nie mo¿na za³adowaæ u¿ytkownika o ID '{_userManager.GetUserId(User)}'.");
+            if (user == null) return NotFound("B³¹d ³adowania u¿ytkownika.");
 
             if (!ModelState.IsValid)
             {
@@ -68,37 +53,27 @@ namespace WirtualnaUczelnia.Areas.Identity.Pages.Account.Manage
                 return Page();
             }
 
+            // Weryfikacja kodu wpisanego przez u¿ytkownika
             var verificationCode = Input.Code.Replace(" ", string.Empty).Replace("-", string.Empty);
             var is2faTokenValid = await _userManager.VerifyTwoFactorTokenAsync(
                 user, _userManager.Options.Tokens.AuthenticatorTokenProvider, verificationCode);
 
             if (!is2faTokenValid)
             {
-                ModelState.AddModelError("Input.Code", "Kod weryfikacyjny jest nieprawid³owy.");
+                ModelState.AddModelError("Input.Code", "Kod jest nieprawid³owy.");
                 await LoadSharedKeyAndQrCodeUriAsync(user);
                 return Page();
             }
 
+            // Sukces: W³¹czamy 2FA dla u¿ytkownika
             await _userManager.SetTwoFactorEnabledAsync(user, true);
-            var userId = await _userManager.GetUserIdAsync(user);
-            _logger.LogInformation("U¿ytkownik o ID '{UserId}' w³¹czy³ 2FA.", userId);
 
-            StatusMessage = "Twoja aplikacja uwierzytelniaj¹ca zosta³a zweryfikowana.";
-
-            if (await _userManager.CountRecoveryCodesAsync(user) == 0)
-            {
-                var recoveryCodes = await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
-                RecoveryCodes = recoveryCodes.ToArray();
-                return RedirectToPage("./ShowRecoveryCodes");
-            }
-            else
-            {
-                return RedirectToPage("./TwoFactorAuthentication");
-            }
+            return RedirectToPage("./TwoFactorAuthentication"); // Mo¿esz tu przekierowaæ gdzie chcesz, np. do Index
         }
 
         private async Task LoadSharedKeyAndQrCodeUriAsync(IdentityUser user)
         {
+            // Pobieramy lub generujemy klucz
             var unformattedKey = await _userManager.GetAuthenticatorKeyAsync(user);
             if (string.IsNullOrEmpty(unformattedKey))
             {
@@ -106,34 +81,12 @@ namespace WirtualnaUczelnia.Areas.Identity.Pages.Account.Manage
                 unformattedKey = await _userManager.GetAuthenticatorKeyAsync(user);
             }
 
-            SharedKey = FormatKey(unformattedKey);
-
+            SharedKey = unformattedKey;
             var email = await _userManager.GetEmailAsync(user);
-            AuthenticatorUri = GenerateQrCodeUri(email, unformattedKey);
-        }
 
-        private string FormatKey(string unformattedKey)
-        {
-            var result = new StringBuilder();
-            int currentPosition = 0;
-            while (currentPosition + 4 < unformattedKey.Length)
-            {
-                result.Append(unformattedKey.Substring(currentPosition, 4)).Append(" ");
-                currentPosition += 4;
-            }
-            if (currentPosition < unformattedKey.Length)
-            {
-                result.Append(unformattedKey.Substring(currentPosition));
-            }
-
-            return result.ToString().ToLowerInvariant();
-        }
-
-        private string GenerateQrCodeUri(string email, string unformattedKey)
-        {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                AuthenticatorUriFormat,
+            // Format URI dla Google Authenticator
+            AuthenticatorUri = string.Format(
+                "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6",
                 _urlEncoder.Encode("WirtualnaUczelnia"),
                 _urlEncoder.Encode(email),
                 unformattedKey);

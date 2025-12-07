@@ -60,8 +60,7 @@ namespace WirtualnaUczelnia.Areas.Identity.Pages.Account
 
             if (ModelState.IsValid)
             {
-                // Próba logowania
-                // lockoutOnFailure: false oznacza, ¿e konto nie zostanie zablokowane po nieudanych próbach (dla uproszczenia)
+                // Próba logowania has³em
                 var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
 
                 if (result.Succeeded)
@@ -69,15 +68,27 @@ namespace WirtualnaUczelnia.Areas.Identity.Pages.Account
                     _logger.LogInformation("U¿ytkownik zalogowany.");
                     return LocalRedirect(returnUrl);
                 }
-                // Tutaj mo¿na obs³u¿yæ 2FA lub blokadê konta, ale dla uproszczenia pomijamy
+
+                // --- TO JEST BRAKUJ¥CY FRAGMENT DLA 2FA ---
+                if (result.RequiresTwoFactor)
+                {
+                    // Przekieruj do strony wpisywania kodu (któr¹ zaraz stworzymy)
+                    return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+                }
+                // ------------------------------------------
+
+                if (result.IsLockedOut)
+                {
+                    _logger.LogWarning("Konto zablokowane.");
+                    return RedirectToPage("./Lockout");
+                }
                 else
                 {
-                    ModelState.AddModelError(string.Empty, "Nieudana próba logowania. SprawdŸ email i has³o.");
+                    ModelState.AddModelError(string.Empty, "Nieudana próba logowania.");
                     return Page();
                 }
             }
 
-            // Jeœli dotarliœmy tutaj, coœ posz³o nie tak (np. b³¹d walidacji), wyœwietl formularz ponownie
             return Page();
         }
     }

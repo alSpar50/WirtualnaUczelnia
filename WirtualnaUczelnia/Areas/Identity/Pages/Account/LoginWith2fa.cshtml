@@ -1,0 +1,51 @@
+﻿@page
+@model WirtualnaUczelnia.Areas.Identity.Pages.Account.LoginWith2faModel
+@{
+    ViewData["Title"] = "Weryfikacja dwuetapowa";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow-lg">
+                <div class="card-header bg-warning text-dark text-center">
+                    <h3 class="h5 mb-0">Weryfikacja dwuetapowa</h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-center">Twoje logowanie jest chronione aplikacją uwierzytelniającą. Wpisz kod z aplikacji.</p>
+                    <form method="post" asp-route-returnUrl="@Model.ReturnUrl">
+                        <input asp-for="RememberMe" type="hidden" />
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                        <div class="form-group mb-3 text-center">
+                            <label asp-for="Input.TwoFactorCode" class="form-label fw-bold">Kod weryfikacyjny</label>
+                            <input asp-for="Input.TwoFactorCode" class="form-control text-center fs-4 letter-spacing-2" autocomplete="off" style="letter-spacing: 5px;" />
+                            <span asp-validation-for="Input.TwoFactorCode" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input asp-for="Input.RememberMachine" class="form-check-input" />
+                            <label asp-for="Input.RememberMachine" class="form-check-label">
+                                Nie pytaj ponownie na tym urządzeniu
+                            </label>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">Zaloguj</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="text-center mt-3">
+                <p>
+                    Nie masz dostępu do urządzenia?
+                    <a asp-page="./LoginWithRecoveryCode" asp-route-returnUrl="@Model.ReturnUrl">Zaloguj się kodem odzyskiwania</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
