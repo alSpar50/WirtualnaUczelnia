@@ -20,8 +20,6 @@ namespace WirtualnaUczelnia.Controllers
 
         public async Task<IActionResult> Index()
         {
-
-            // Diagnostyka: Sprawdźmy, czy system widzi użytkownika jako niepełnosprawnego
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             bool isDisabled = false;
 
@@ -31,25 +29,54 @@ namespace WirtualnaUczelnia.Controllers
                 if (pref != null) isDisabled = pref.IsDisabled;
             }
 
-            ViewBag.IsDisabledUser = isDisabled; // Przekazujemy status do widoku
-            ViewBag.Locations = new SelectList(_context.Locations, "Id", "Name");
+            ViewBag.IsDisabledUser = isDisabled;
 
+            // Pokazuj tylko widoczne lokacje (nie ukryte i nie w ukrytych budynkach)
+            var visibleLocations = await _context.Locations
+                .Include(l => l.Building)
+                .Where(l => !l.IsHidden)
+                .Where(l => l.Building == null || !l.Building.IsHidden)
+                .OrderBy(l => l.Building != null ? l.Building.Symbol : "ZZZ") // Sortuj po budynku
+                .ThenBy(l => l.Name) // Potem po nazwie
+                .ToListAsync();
 
-            // Lista lokacji do wyboru
-            ViewBag.Locations = new SelectList(_context.Locations, "Id", "Name");
+            ViewBag.Locations = new SelectList(visibleLocations, "Id", "Name");
             return View();
         }
 
         [HttpPost]
         public async Task<IActionResult> FindRoute(int startId, int endId)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // Pobierz ID zalogowanego usera
+            // Walidacja: start i koniec nie mogą być takie same
+            if (startId == endId)
+            {
+                TempData["Error"] = "Lokalizacja startowa i docelowa nie mogą być takie same.";
+                return RedirectToAction(nameof(Index));
+            }
 
+            // Sprawdź czy wybrane lokacje są dostępne
+            var startLoc = await _context.Locations
+                .Include(l => l.Building)
+                .FirstOrDefaultAsync(l => l.Id == startId);
+            var endLoc = await _context.Locations
+                .Include(l => l.Building)
+                .FirstOrDefaultAsync(l => l.Id == endId);
+
+            // Jeśli któraś lokacja jest ukryta, nie pozwól na wyszukanie trasy
+            if (startLoc == null || startLoc.IsHidden || (startLoc.Building != null && startLoc.Building.IsHidden))
+            {
+                TempData["Error"] = "Lokalizacja startowa jest niedostępna.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (endLoc == null || endLoc.IsHidden || (endLoc.Building != null && endLoc.Building.IsHidden))
+            {
+                TempData["Error"] = "Lokalizacja docelowa jest niedostępna.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var path = await _pathFinder.FindPathAsync(startId, endId, userId);
-
-            // Pobieramy nazwy dla nagłówka
-            var startLoc = await _context.Locations.FindAsync(startId);
-            var endLoc = await _context.Locations.FindAsync(endId);
 
             ViewBag.StartName = startLoc?.Name;
             ViewBag.EndName = endLoc?.Name;

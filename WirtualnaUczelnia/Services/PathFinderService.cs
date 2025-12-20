@@ -9,89 +9,136 @@ namespace WirtualnaUczelnia.Services
         public string Instruction { get; set; }
         public string Icon { get; set; }
         public int TargetLocationId { get; set; }
+        public string? LocationType { get; set; }  // Typ docelowej lokacji
+        public int? Floor { get; set; }            // Piętro docelowe
     }
 
     public class PathFinderService
     {
         private readonly ApplicationDbContext _context;
 
+        // Mnożnik kosztu dla schodów gdy użytkownik potrzebuje dostępności
+        // (wysoka wartość sprawia, że schody są bardzo nieopłacalne)
+        private const int STAIRS_PENALTY_FOR_DISABLED = 10000;
+
         public PathFinderService(ApplicationDbContext context)
         {
             _context = context;
         }
 
+        /// <summary>
+        /// Znajduje najkrótszą ścieżkę używając algorytmu Dijkstry z wagami (kosztami przejść).
+        /// Dla osób niepełnosprawnych schody mają bardzo wysoki koszt (praktycznie niedostępne).
+        /// </summary>
         public async Task<List<NavigationStep>> FindPathAsync(int startId, int endId, string userId)
         {
-            // 1. Sprawdź preferencje użytkownika (czy potrzebuje windy)
+            // 1. Sprawdź preferencje użytkownika
             bool avoidStairs = false;
 
             if (!string.IsNullOrEmpty(userId))
             {
-                // Szukamy preferencji dla tego konkretnego UserID
                 var pref = await _context.UserPreferences.FirstOrDefaultAsync(p => p.UserId == userId);
-
-                // Jeśli znaleziono preferencję i jest zaznaczona niepełnosprawność -> unikaj schodów
                 if (pref != null && pref.IsDisabled)
                 {
                     avoidStairs = true;
                 }
             }
 
-            // 2. Pobierz wszystkie przejścia
+            // 2. Pobierz wszystkie widoczne przejścia
             var allTransitions = await _context.Transitions
                 .Include(t => t.TargetLocation)
+                    .ThenInclude(l => l.Building)
+                .Include(t => t.SourceLocation)
+                    .ThenInclude(l => l.Building)
+                .Where(t => !t.IsHidden)
+                .Where(t => !t.SourceLocation.IsHidden)
+                .Where(t => !t.TargetLocation.IsHidden)
+                .Where(t => t.SourceLocation.Building == null || !t.SourceLocation.Building.IsHidden)
+                .Where(t => t.TargetLocation.Building == null || !t.TargetLocation.Building.IsHidden)
                 .ToListAsync();
 
-            // 3. Algorytm BFS
-            var queue = new Queue<int>();
-            queue.Enqueue(startId);
-
-            var cameFrom = new Dictionary<int, Transition>();
-            var visited = new HashSet<int> { startId };
-
-            bool found = false;
-
-            while (queue.Count > 0)
+            // 3. Budujemy graf jako słownik: SourceId -> Lista (TargetId, Transition, EffectiveCost)
+            var graph = new Dictionary<int, List<(int targetId, Transition transition, int cost)>>();
+            
+            foreach (var t in allTransitions)
             {
-                var currentId = queue.Dequeue();
-                if (currentId == endId)
+                if (!graph.ContainsKey(t.SourceLocationId))
+                    graph[t.SourceLocationId] = new List<(int, Transition, int)>();
+
+                // Oblicz efektywny koszt
+                int effectiveCost = t.Cost;
+                
+                // Jeśli użytkownik unika schodów, a przejście nie jest dostępne dla wózków
+                if (avoidStairs && !t.IsWheelchairAccessible)
                 {
-                    found = true;
-                    break;
+                    effectiveCost += STAIRS_PENALTY_FOR_DISABLED; // Ogromna kara - schody będą ostatecznością
                 }
 
-                var neighbors = allTransitions.Where(t => t.SourceLocationId == currentId);
+                graph[t.SourceLocationId].Add((t.TargetLocationId, t, effectiveCost));
+            }
 
-                foreach (var transition in neighbors)
+            // 4. Algorytm Dijkstry
+            var distances = new Dictionary<int, int>();
+            var cameFrom = new Dictionary<int, Transition>();
+            var visited = new HashSet<int>();
+
+            // PriorityQueue: (koszt, locationId) - sortuje od najmniejszego kosztu
+            var priorityQueue = new PriorityQueue<int, int>();
+
+            distances[startId] = 0;
+            priorityQueue.Enqueue(startId, 0);
+
+            while (priorityQueue.Count > 0)
+            {
+                var currentId = priorityQueue.Dequeue();
+
+                // Znaleźliśmy cel
+                if (currentId == endId)
+                    break;
+
+                // Już odwiedzony z lepszym kosztem
+                if (visited.Contains(currentId))
+                    continue;
+
+                visited.Add(currentId);
+
+                // Sprawdź sąsiadów
+                if (graph.ContainsKey(currentId))
                 {
-                    // FILTR: Jeśli unikamy schodów (avoidStairs=true), a przejście NIE jest dostępne (IsWheelchairAccessible=false) -> POMIŃ
-                    if (avoidStairs && !transition.IsWheelchairAccessible)
+                    foreach (var (targetId, transition, cost) in graph[currentId])
                     {
-                        continue;
-                    }
+                        if (visited.Contains(targetId))
+                            continue;
 
-                    if (!visited.Contains(transition.TargetLocationId))
-                    {
-                        visited.Add(transition.TargetLocationId);
-                        cameFrom[transition.TargetLocationId] = transition;
-                        queue.Enqueue(transition.TargetLocationId);
+                        int newDist = distances[currentId] + cost;
+
+                        // Jeśli znaleźliśmy krótszą ścieżkę
+                        if (!distances.ContainsKey(targetId) || newDist < distances[targetId])
+                        {
+                            distances[targetId] = newDist;
+                            cameFrom[targetId] = transition;
+                            priorityQueue.Enqueue(targetId, newDist);
+                        }
                     }
                 }
             }
 
-            // 4. Budowanie wyniku
+            // 5. Budowanie wyniku (odtworzenie ścieżki)
             var path = new List<NavigationStep>();
-            if (found)
+            
+            if (distances.ContainsKey(endId))
             {
                 var curr = endId;
-                while (curr != startId)
+                while (curr != startId && cameFrom.ContainsKey(curr))
                 {
                     var trans = cameFrom[curr];
                     path.Add(new NavigationStep
                     {
-                        Instruction = $"Idź {GetDirectionName(trans.Direction)} do: {trans.TargetLocation.Name}",
+                        Instruction = BuildInstruction(trans),
                         Icon = GetDirectionIcon(trans.Direction),
-                        TargetLocationId = trans.TargetLocationId
+                        TargetLocationId = trans.TargetLocationId,
+                        LocationType = trans.TargetLocation.Type.ToString(),
+                        Floor = trans.TargetLocation.Floor
                     });
                     curr = trans.SourceLocationId;
                 }
@@ -101,15 +148,35 @@ namespace WirtualnaUczelnia.Services
             return path;
         }
 
-        // Metody pomocnicze (bez zmian)
+        /// <summary>
+        /// Buduje czytelną instrukcję nawigacyjną
+        /// </summary>
+        private string BuildInstruction(Transition trans)
+        {
+            var target = trans.TargetLocation;
+            string directionText = GetDirectionName(trans.Direction);
+            
+            // Dostosuj instrukcję w zależności od typu lokacji docelowej
+            return target.Type switch
+            {
+                LocationType.Stairs => $"Idź {directionText} do klatki schodowej: {target.Name}",
+                LocationType.Elevator => $"Idź {directionText} do windy: {target.Name}",
+                LocationType.Corridor => $"Idź {directionText} korytarzem: {target.Name}",
+                LocationType.Hall => $"Idź {directionText} przez hol: {target.Name}",
+                LocationType.Entrance => $"Idź {directionText} do wejścia: {target.Name}",
+                LocationType.Room => $"Idź {directionText} do: {target.Name}",
+                _ => $"Idź {directionText} do: {target.Name}"
+            };
+        }
+
         private string GetDirectionName(Direction dir) => dir switch
         {
             Direction.Forward => "prosto",
             Direction.Back => "do tyłu",
             Direction.Left => "w lewo",
             Direction.Right => "w prawo",
-            Direction.Up => "w górę (winda/schody)",
-            Direction.Down => "w dół (winda/schody)",
+            Direction.Up => "w górę",
+            Direction.Down => "w dół",
             _ => "tam"
         };
 
@@ -119,8 +186,8 @@ namespace WirtualnaUczelnia.Services
             Direction.Back => "⬇️",
             Direction.Left => "⬅️",
             Direction.Right => "➡️",
-            Direction.Up => "↗️",
-            Direction.Down => "↘️",
+            Direction.Up => "🔼",
+            Direction.Down => "🔽",
             _ => "⏺️"
         };
     }

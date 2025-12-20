@@ -4,51 +4,104 @@
     ViewData["Title"] = "Dodaj lokacjê";
 }
 
-<h1>Dodaj now¹ lokacjê</h1>
+<h1 tabindex="0">Dodaj now¹ lokacjê</h1>
 <hr />
 <div class="row">
     <div class="col-md-6">
         <form asp-action="Create" enctype="multipart/form-data">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
 
             <div class="form-group mb-3">
-                <label asp-for="Name" class="control-label">Nazwa miejsca</label>
+                <label asp-for="Name" class="control-label fw-bold">Nazwa miejsca</label>
                 <input asp-for="Name" class="form-control" />
-                <span asp-validation-for="Name" class="text-danger"></span>
+                <span asp-validation-for="Name" class="text-danger" role="alert"></span>
             </div>
 
             <div class="form-group mb-3">
-                <label asp-for="Description" class="control-label">Opis</label>
-                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
-                <span asp-validation-for="Description" class="text-danger"></span>
+                <label asp-for="Description" class="control-label fw-bold">Opis</label>
+                <textarea asp-for="Description" class="form-control" rows="3" 
+                          aria-describedby="descHelp"
+                          placeholder="Opisz to miejsce - co siê tutaj znajduje, do czego s³u¿y"></textarea>
+                <small id="descHelp" class="form-text text-muted">Ogólny opis miejsca widoczny dla u¿ytkowników</small>
+                <span asp-validation-for="Description" class="text-danger" role="alert"></span>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label asp-for="Type" class="control-label fw-bold">Typ lokalizacji</label>
+                    <select asp-for="Type" class="form-select" asp-items="Html.GetEnumSelectList<WirtualnaUczelnia.Models.LocationType>()"></select>
+                    <small class="form-text text-muted">Pomaga w nawigacji i generowaniu instrukcji</small>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Floor" class="control-label fw-bold">Piêtro</label>
+                    <input asp-for="Floor" type="number" class="form-control" />
+                    <small class="form-text text-muted">0 = parter, 1 = I piêtro, -1 = piwnica</small>
+                </div>
             </div>
 
             <div class="form-group mb-3">
-                <label asp-for="BuildingId" class="control-label">Budynek</label>
-                <select asp-for="BuildingId" class="form-control" asp-items="ViewBag.BuildingId">
+                <label asp-for="BuildingId" class="control-label fw-bold">Budynek</label>
+                <select asp-for="BuildingId" class="form-control" asp-items="ViewBag.BuildingId" aria-describedby="buildingHelp">
                     <option value="">-- Wybierz budynek --</option>
                 </select>
+                <small id="buildingHelp" class="form-text text-muted">Opcjonalnie przypisz lokacjê do budynku</small>
             </div>
 
             <div class="card mb-3">
-                <div class="card-header bg-light">Pliki Multimedialne</div>
+                <div class="card-header bg-light fw-bold">
+                    <i class="bi bi-collection" aria-hidden="true"></i> Pliki Multimedialne
+                </div>
                 <div class="card-body">
                     <div class="form-group mb-3">
-                        <label class="control-label fw-bold">Zdjêcie</label>
-                        <input type="file" name="imageFile" class="form-control" accept="image/*" />
-                        <small class="text-muted">Wymagane. Obs³ugiwane formaty: .jpg, .png</small>
+                        <label class="control-label fw-bold">
+                            <i class="bi bi-image" aria-hidden="true"></i> Zdjêcie
+                        </label>
+                        <input type="file" name="imageFile" class="form-control" accept="image/*" aria-describedby="imageHelp" />
+                        <small id="imageHelp" class="form-text text-muted">Wymagane. Obs³ugiwane formaty: JPG, PNG</small>
                     </div>
+
                     <div class="form-group mb-3">
-                        <label class="control-label fw-bold">Lektor (Audio)</label>
-                        <input type="file" name="audioFile" class="form-control" accept="audio/*" />
-                        <small class="text-muted">Opcjonalne. Format: .mp3</small>
+                        <label asp-for="ImageAltText" class="control-label fw-bold">
+                            <i class="bi bi-universal-access text-primary" aria-hidden="true"></i> Tekst alternatywny (dla czytników ekranu)
+                        </label>
+                        <textarea asp-for="ImageAltText" class="form-control" rows="3" 
+                                  placeholder="np. Widok na korytarz z drzwiami po lewej stronie prowadz¹cymi do dziekanatu, na wprost schody prowadz¹ce na piêtro"
+                                  aria-describedby="altHelp"></textarea>
+                        <small id="altHelp" class="form-text text-muted">
+                            <strong>Wa¿ne!</strong> Ten tekst zostanie odczytany przez czytniki ekranu (np. NVDA) dla osób niewidomych. 
+                            Opisz szczegó³owo, co widaæ na zdjêciu - gdzie s¹ drzwi, schody, wa¿ne elementy.
+                        </small>
+                        <span asp-validation-for="ImageAltText" class="text-danger" role="alert"></span>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-group mb-3">
+                        <label class="control-label fw-bold">
+                            <i class="bi bi-mic" aria-hidden="true"></i> Lektor (Audio)
+                        </label>
+                        <input type="file" name="audioFile" class="form-control" accept="audio/*" aria-describedby="audioHelp" />
+                        <small id="audioHelp" class="form-text text-muted">Opcjonalne. Format: MP3. Nagranie lektora opisuj¹ce miejsce.</small>
                     </div>
                 </div>
             </div>
 
-            <div class="form-group">
-                <input type="submit" value="Utwórz" class="btn btn-primary" />
-                <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
+            <!-- Checkbox ukrycia -->
+            <div class="form-check mb-3 p-3 bg-light border rounded">
+                <input class="form-check-input ms-1" asp-for="IsHidden" id="isHiddenCheck" style="transform: scale(1.3);" />
+                <label class="form-check-label fw-bold ms-2" for="isHiddenCheck">
+                    <i class="bi bi-eye-slash text-secondary" aria-hidden="true"></i> Ukryta
+                </label>
+                <div class="form-text ms-1 mt-1">Zaznacz, jeœli lokacja ma byæ tymczasowo niewidoczna dla u¿ytkowników.</div>
+            </div>
+
+            <div class="form-group d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg" aria-hidden="true"></i> Utwórz
+                </button>
+                <a asp-action="Index" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left" aria-hidden="true"></i> Anuluj
+                </a>
             </div>
         </form>
     </div>

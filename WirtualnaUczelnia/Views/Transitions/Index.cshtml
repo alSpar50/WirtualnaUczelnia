@@ -1,38 +1,180 @@
+@model IEnumerable<WirtualnaUczelnia.Models.Transition>
+@using WirtualnaUczelnia.Extensions
+
 @{
     ViewData["Title"] = "Lista Przejœæ";
 }
 
-<h1>Lista zdefiniowanych przejœæ</h1>
+<h1 tabindex="0">Lista zdefiniowanych przejœæ</h1>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle" aria-hidden="true"></i> @TempData["Message"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Zamknij"></button>
+    </div>
+}
 
 <p>
-    <a asp-action="Create" class="btn btn-primary">Dodaj nowe przejœcie</a>
+    <a asp-action="Create" class="btn btn-primary" aria-label="Dodaj nowe przejœcie miêdzy lokalizacjami">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i> Dodaj nowe przejœcie
+    </a>
 </p>
-<table class="table table-hover">
-    <thead>
-        <tr>
-            <th>Sk¹d (Lokalizacja)</th>
-            <th>Dok¹d (Lokalizacja)</th>
-            <th>Kierunek (Ikona)</th>
-            <th>Pozycja X / Y</th>
-            <th>Akcje</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Model)
-        {
-            <tr>
-                <td>@(item.SourceLocation?.Name ?? "Brak")</td>
-                <td>@(item.TargetLocation?.Name ?? "Brak")</td>
-                <td>@item.Direction</td>
-                <td>@item.PositionX% / @item.PositionY%</td>
-                
-                <td>
-                    <!-- NOWY PRZYCISK EDYCJI -->
-                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Edytuj</a>
 
-                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">Usuñ</a>
-                </td>
+<div class="table-responsive">
+    <table class="table table-hover table-striped" aria-label="Lista przejœæ miêdzy lokalizacjami">
+        <thead class="table-dark">
+            <tr>
+                <th scope="col" tabindex="0">Status</th>
+                <th scope="col" tabindex="0">Sk¹d</th>
+                <th scope="col" tabindex="0">Dok¹d</th>
+                <th scope="col" tabindex="0">Kierunek</th>
+                <th scope="col" tabindex="0">Koszt</th>
+                <th scope="col" tabindex="0">Dostêpnoœæ</th>
+                <th scope="col" tabindex="0">Akcje</th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                string directionIcon = item.Direction switch
+                {
+                    WirtualnaUczelnia.Models.Direction.Forward => "??",
+                    WirtualnaUczelnia.Models.Direction.Back => "??",
+                    WirtualnaUczelnia.Models.Direction.Left => "??",
+                    WirtualnaUczelnia.Models.Direction.Right => "??",
+                    WirtualnaUczelnia.Models.Direction.Up => "??",
+                    WirtualnaUczelnia.Models.Direction.Down => "??",
+                    _ => "??"
+                };
+                
+                string directionName = item.Direction switch
+                {
+                    WirtualnaUczelnia.Models.Direction.Forward => "Prosto",
+                    WirtualnaUczelnia.Models.Direction.Back => "W ty³",
+                    WirtualnaUczelnia.Models.Direction.Left => "W lewo",
+                    WirtualnaUczelnia.Models.Direction.Right => "W prawo",
+                    WirtualnaUczelnia.Models.Direction.Up => "W górê",
+                    WirtualnaUczelnia.Models.Direction.Down => "W dó³",
+                    _ => "Nieznany"
+                };
+
+                string sourceName = item.SourceLocation?.Name ?? "Brak";
+                string targetName = item.TargetLocation?.Name ?? "Brak";
+                
+                // SprawdŸ czy lokacje lub ich budynki s¹ ukryte
+                bool isSourceHidden = item.SourceLocation != null && (item.SourceLocation.IsHidden || (item.SourceLocation.Building != null && item.SourceLocation.Building.IsHidden));
+                bool isTargetHidden = item.TargetLocation != null && (item.TargetLocation.IsHidden || (item.TargetLocation.Building != null && item.TargetLocation.Building.IsHidden));
+                bool isEffectivelyHidden = item.IsHidden || isSourceHidden || isTargetHidden;
+
+                // Kolor kosztu w zale¿noœci od wartoœci
+                string costBadgeClass = item.Cost switch
+                {
+                    <= 5 => "bg-success",
+                    <= 15 => "bg-info",
+                    <= 25 => "bg-warning text-dark",
+                    _ => "bg-danger"
+                };
+
+                <tr class="@(isEffectivelyHidden ? "table-secondary" : "")">
+                    <td tabindex="0">
+                        @if (item.IsHidden)
+                        {
+                            <span class="badge bg-secondary" aria-label="Ukryte">
+                                <i class="bi bi-eye-slash" aria-hidden="true"></i> Ukryte
+                            </span>
+                        }
+                        else if (isSourceHidden || isTargetHidden)
+                        {
+                            <span class="badge bg-warning text-dark" aria-label="Lokacja ukryta" title="Jedna z lokalizacji jest ukryta">
+                                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Lok. ukryta
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success" aria-label="Widoczne">
+                                <i class="bi bi-eye" aria-hidden="true"></i> Widoczne
+                            </span>
+                        }
+                    </td>
+                    <td class="fw-bold @(isSourceHidden ? "text-muted" : "")" tabindex="0">@sourceName</td>
+                    <td class="@(isTargetHidden ? "text-muted" : "")" tabindex="0">@targetName</td>
+                    <td tabindex="0">
+                        <span aria-hidden="true">@directionIcon</span>
+                        @directionName
+                    </td>
+                    <td tabindex="0">
+                        <span class="badge @costBadgeClass" title="Koszt przejœcia: @item.Cost">
+                            @item.Cost
+                        </span>
+                    </td>
+                    <td tabindex="0">
+                        @if (item.IsWheelchairAccessible)
+                        {
+                            <span class="badge bg-success" aria-label="Dostêpne dla wózków">
+                                <i class="bi bi-check-lg" aria-hidden="true"></i> OK
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark" aria-label="Niedostêpne dla wózków - schody">
+                                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Schody
+                            </span>
+                        }
+                    </td>
+                    <td>
+                        <div class="btn-group" role="group" aria-label="Akcje dla przejœcia z @sourceName do @targetName">
+                            <!-- Przycisk Ukryj/Poka¿ -->
+                            <form asp-action="ToggleVisibility" asp-route-id="@item.Id" method="post" style="display: inline;">
+                                @Html.AntiForgeryToken()
+                                @if (item.IsHidden)
+                                {
+                                    <button type="submit" class="btn btn-sm btn-success" 
+                                            aria-label="Poka¿ przejœcie z @sourceName do @targetName"
+                                            title="Poka¿">
+                                        <i class="bi bi-eye" aria-hidden="true"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="submit" class="btn btn-sm btn-secondary" 
+                                            aria-label="Ukryj przejœcie z @sourceName do @targetName"
+                                            title="Ukryj">
+                                        <i class="bi bi-eye-slash" aria-hidden="true"></i>
+                                    </button>
+                                }
+                            </form>
+                            
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning" 
+                               aria-label="Edytuj przejœcie z @sourceName do @targetName">
+                                <i class="bi bi-pencil" aria-hidden="true"></i>
+                            </a>
+                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger" 
+                               aria-label="Usuñ przejœcie z @sourceName do @targetName">
+                                <i class="bi bi-trash" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info" role="alert" tabindex="0">
+        Brak zdefiniowanych przejœæ. Kliknij "Dodaj nowe przejœcie", aby utworzyæ pierwsze po³¹czenie miêdzy lokalizacjami.
+    </div>
+}
+
+<div class="mt-3">
+    <small class="text-muted">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        <strong>Koszt:</strong> 
+        <span class="badge bg-success">1-5</span> Bardzo krótki |
+        <span class="badge bg-info">6-15</span> Normalny |
+        <span class="badge bg-warning text-dark">16-25</span> D³ugi |
+        <span class="badge bg-danger">26+</span> Bardzo d³ugi
+    </small>
+</div>

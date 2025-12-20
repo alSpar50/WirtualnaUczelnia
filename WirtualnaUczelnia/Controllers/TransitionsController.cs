@@ -50,10 +50,14 @@ namespace WirtualnaUczelnia.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         // DODANO: "IsWheelchairAccessible" do listy Bind
-        public async Task<IActionResult> Create([Bind("Id,Direction,PositionX,PositionY,SourceLocationId,TargetLocationId,IsWheelchairAccessible")] Transition transition)
+        public async Task<IActionResult> Create([Bind("Id,Direction,PositionX,PositionY,SourceLocationId,TargetLocationId,IsWheelchairAccessible,IsHidden,Cost")] Transition transition)
         {
             ModelState.Remove("SourceLocation");
             ModelState.Remove("TargetLocation");
+
+            // Ustaw domyœlny koszt jeœli nie podano
+            if (transition.Cost <= 0)
+                transition.Cost = 10;
 
             if (ModelState.IsValid)
             {
@@ -95,12 +99,16 @@ namespace WirtualnaUczelnia.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         // DODANO: "IsWheelchairAccessible" do listy Bind
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Direction,PositionX,PositionY,SourceLocationId,TargetLocationId,IsWheelchairAccessible")] Transition transition)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Direction,PositionX,PositionY,SourceLocationId,TargetLocationId,IsWheelchairAccessible,IsHidden,Cost")] Transition transition)
         {
             if (id != transition.Id) return NotFound();
 
             ModelState.Remove("SourceLocation");
             ModelState.Remove("TargetLocation");
+
+            // Ustaw minimalny koszt
+            if (transition.Cost <= 0)
+                transition.Cost = 10;
 
             if (ModelState.IsValid)
             {
@@ -125,6 +133,31 @@ namespace WirtualnaUczelnia.Controllers
             ViewBag.ImageMap = System.Text.Json.JsonSerializer.Serialize(imageMap);
 
             return View(transition);
+        }
+
+        // POST: Transitions/ToggleVisibility/5 - Nowa akcja do prze³¹czania widocznoœci
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleVisibility(int id)
+        {
+            var transition = await _context.Transitions
+                .Include(t => t.SourceLocation)
+                .Include(t => t.TargetLocation)
+                .FirstOrDefaultAsync(t => t.Id == id);
+                
+            if (transition == null) return NotFound();
+
+            transition.IsHidden = !transition.IsHidden;
+            await _context.SaveChangesAsync();
+
+            string sourceName = transition.SourceLocation?.Name ?? "?";
+            string targetName = transition.TargetLocation?.Name ?? "?";
+            
+            TempData["Message"] = transition.IsHidden 
+                ? $"Przejœcie z \"{sourceName}\" do \"{targetName}\" zosta³o ukryte." 
+                : $"Przejœcie z \"{sourceName}\" do \"{targetName}\" jest teraz widoczne.";
+
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: Transitions/Delete/5

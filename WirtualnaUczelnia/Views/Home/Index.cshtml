@@ -2,74 +2,205 @@
 
 @{
     ViewData["Title"] = "Mapa Kampusu";
+    int buildingCount = Model.Count();
+    
+    // Polska odmiana liczebników
+    string GetPolishForm(int count)
+    {
+        if (count == 1)
+        {
+            return "jest 1 budynek";
+        }
+        
+        // Sprawdzamy ostatnią cyfrę i przedostatnią (dla liczb 11-14, 111-114 itd.)
+        int lastDigit = count % 10;
+        int lastTwoDigits = count % 100;
+        
+        // Liczby 11-14 (oraz 111-114, 211-214 itd.) - "jest X budynków"
+        if (lastTwoDigits >= 11 && lastTwoDigits <= 14)
+        {
+            return $"jest {count} budynków";
+        }
+        
+        // Liczby kończące się na 2, 3, 4 - "są X budynki"
+        if (lastDigit >= 2 && lastDigit <= 4)
+        {
+            return $"są {count} budynki";
+        }
+        
+        // Pozostałe (0, 5-9) - "jest X budynków"
+        return $"jest {count} budynków";
+    }
+    
+    string buildingText = GetPolishForm(buildingCount);
 }
 
 <div class="text-center mb-5 pt-4">
-    <h1 class="display-3 fw-bold text-primary">Wirtualna Uczelnia</h1>
-    <p class="lead text-muted">Znajdź budynek lub wyszukaj konkretne miejsce.</p>
+    <h1 class="display-3 fw-bold text-primary" tabindex="0" aria-label="Wirtualna Uczelnia - strona główna">Wirtualna Uczelnia</h1>
+    <p class="lead text-muted" tabindex="0" aria-label="Znajdź budynek lub wyszukaj konkretne miejsce">Znajdź budynek lub wyszukaj konkretne miejsce.</p>
 </div>
 
 <!-- Wyszukiwarka -->
 <div class="row justify-content-center mb-5">
     <div class="col-md-8">
-        <form asp-action="Search" method="get" class="d-flex shadow-sm p-1 bg-white rounded-pill border">
-            <input type="text" name="query" class="form-control border-0 rounded-pill px-4 shadow-none" placeholder="Czego szukasz? np. Dziekanat, legitymacja, aula..." style="height: 50px;">
-            <button type="submit" class="btn btn-primary rounded-pill px-4 m-1 fw-bold">
-                <i class="bi bi-search"></i> Szukaj
+        <form asp-action="Search" method="get" class="d-flex shadow-sm p-1 bg-white rounded-pill border" role="search" aria-label="Wyszukiwarka miejsc na uczelni">
+            <label for="searchQuery" class="visually-hidden">Wpisz czego szukasz</label>
+            <input type="text" 
+                   name="query" 
+                   id="searchQuery"
+                   class="form-control border-0 rounded-pill px-4 shadow-none" 
+                   placeholder="Czego szukasz? np. Dziekanat, legitymacja, aula..." 
+                   style="height: 50px;"
+                   aria-label="Pole wyszukiwania - wpisz nazwę miejsca, usługi lub pomieszczenia"
+                   aria-describedby="searchHelp">
+            <button type="submit" class="btn btn-primary rounded-pill px-4 m-1 fw-bold" aria-label="Kliknij aby wyszukać">
+                <i class="bi bi-search" aria-hidden="true"></i> <span>Szukaj</span>
             </button>
         </form>
+        <small id="searchHelp" class="text-muted d-block text-center mt-2" tabindex="0" aria-label="Podpowiedź: możesz wyszukać nazwę pomieszczenia, usługę lub wydarzenie">
+            Możesz wyszukać nazwę pomieszczenia, usługę lub wydarzenie
+        </small>
     </div>
 </div>
 
-<h3 class="mb-4 ps-2 border-start border-4 border-primary">Wybierz budynek</h3>
+<!-- Nagłówek sekcji -->
+<h2 class="mb-3 ps-2 border-start border-4 border-primary" tabindex="0" id="buildingsHeading" 
+    aria-label="Sekcja: Wybierz budynek">
+    Wybierz budynek
+</h2>
 
+<!-- Informacja o liczbie budynków z poprawną odmianą -->
+<p class="text-muted mb-4" tabindex="0"
+   aria-label="Na liście @buildingText. Użyj klawisza Tab, aby przejść do poszczególnych budynków.">
+    <i class="bi bi-info-circle" aria-hidden="true"></i>
+    Na liście <strong>@buildingText</strong>.
+</p>
+
+<!-- Lista budynków - usunięto role="list" i role="listitem" które powodowały problemy -->
 <div class="row g-4">
     @foreach (var item in Model)
     {
-        // Ustalmy tło - jeśli jest wgrane zdjęcie, użyj go, jeśli nie - szary kolor
         string bgStyle = string.IsNullOrEmpty(item.ImageFileName)
-        ? "background-color: #e9ecef;"
-        : $"background-image: url('/images/{item.ImageFileName}'); background-size: cover; background-position: center;";
+            ? "background-color: #e9ecef;"
+            : $"background-image: url('/images/{item.ImageFileName}'); background-size: cover; background-position: center;";
+
+        // Tekst alternatywny dla obrazu kafelka
+        string altText = !string.IsNullOrEmpty(item.ImageAltText) 
+            ? item.ImageAltText 
+            : $"Zdjęcie budynku {item.Symbol} - {item.Name}";
+        
+        // Skrócony opis
+        string shortDesc = string.IsNullOrEmpty(item.Description) 
+            ? "Brak opisu" 
+            : (item.Description.Length > 100 ? item.Description.Substring(0, 100) + "..." : item.Description);
 
         <div class="col-md-4">
-            <div class="card h-100 shadow border-0 overflow-hidden text-white card-hover-effect">
+            <article class="card h-100 shadow border-0 overflow-hidden text-white card-hover-effect">
+                
+                <!-- Kafelek z obrazem -->
+                <div class="building-tile h-100 d-flex flex-column justify-content-end p-0" 
+                     style="min-height: 250px; @bgStyle position: relative;"
+                     tabindex="0"
+                     aria-label="Zdjęcie budynku: @altText">
 
-                <!-- Obrazek jako tło karty -->
-                <div class="h-100 d-flex flex-column justify-content-end p-0" style="min-height: 250px; @bgStyle position: relative;">
-
-                    <!-- Ciemna nakładka (gradient) dla czytelności tekstu -->
-                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.1));"></div>
+                    <!-- Ciemna nakładka -->
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.1));" aria-hidden="true"></div>
 
                     <div class="card-body position-relative z-1">
                         <div class="d-flex justify-content-between align-items-end">
                             <div>
-                                <span class="badge bg-warning text-dark mb-2">Budynek @item.Symbol</span>
-                                <h4 class="card-title fw-bold text-shadow">@item.Name</h4>
-                                <p class="card-text small text-white-50" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                                    @item.Description
+                                <!-- Badge z symbolem budynku - jako przycisk dla NVDA -->
+                                <button type="button" 
+                                        class="badge bg-warning text-dark mb-2 border-0 building-badge" 
+                                        aria-label="Symbol budynku: @item.Symbol"
+                                        style="cursor: default;">
+                                    Budynek @item.Symbol
+                                </button>
+                                
+                                <!-- Nazwa budynku - jako nagłówek -->
+                                <h3 class="card-title fw-bold text-shadow building-title" 
+                                    tabindex="0"
+                                    aria-label="Nazwa budynku: @item.Name">
+                                    @item.Name
+                                </h3>
+                                
+                                <!-- Opis budynku - jako paragraf z tabindex -->
+                                <p class="card-text small text-white-50 building-desc" 
+                                   style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;"
+                                   tabindex="0"
+                                   aria-label="Opis: @shortDesc">
+                                    @(string.IsNullOrEmpty(item.Description) ? "Brak opisu" : item.Description)
                                 </p>
                             </div>
                         </div>
-                        <a asp-controller="Explore" asp-action="StartInBuilding" asp-route-buildingId="@item.Id" class="btn btn-light w-100 mt-3 fw-bold stretched-link">
-                            Wejdź do środka <i class="bi bi-arrow-right"></i>
+                        
+                        <!-- Przycisk wejścia - link jako przycisk -->
+                        <a asp-controller="Explore" asp-action="StartInBuilding" asp-route-buildingId="@item.Id" 
+                           class="btn btn-light w-100 mt-3 fw-bold"
+                           role="button"
+                           aria-label="Wejdź do budynku @item.Symbol - @item.Name">
+                            Wejdź do środka <i class="bi bi-arrow-right" aria-hidden="true"></i>
                         </a>
                     </div>
                 </div>
-            </div>
+            </article>
         </div>
     }
 </div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info text-center" role="alert" tabindex="0" aria-label="Informacja: Brak budynków do wyświetlenia. Skontaktuj się z administratorem.">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        Brak budynków do wyświetlenia. Skontaktuj się z administratorem.
+    </div>
+}
 
 <style>
     .card-hover-effect {
         transition: transform 0.3s ease;
     }
 
-        .card-hover-effect:hover {
-            transform: translateY(-5px);
-        }
+    .card-hover-effect:hover,
+    .card-hover-effect:focus-within {
+        transform: translateY(-5px);
+    }
 
     .text-shadow {
         text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+    }
+
+    /* Wyraźny fokus dla kafelka budynku (obraz) */
+    .building-tile:focus {
+        outline: 4px solid #ffc107 !important;
+        outline-offset: -4px;
+    }
+
+    /* Fokus dla badge (button) */
+    .building-badge:focus {
+        outline: 3px solid #000 !important;
+        outline-offset: 2px;
+        box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.5);
+    }
+
+    /* Fokus dla tytułu */
+    .building-title:focus {
+        outline: 3px solid #ffc107 !important;
+        outline-offset: 2px;
+        border-radius: 4px;
+    }
+
+    /* Fokus dla opisu */
+    .building-desc:focus {
+        outline: 2px solid #ffc107 !important;
+        outline-offset: 2px;
+        border-radius: 4px;
+    }
+
+    /* Fokus dla przycisku */
+    .btn:focus {
+        outline: 3px solid #0d6efd !important;
+        outline-offset: 2px;
+        box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.25);
     }
 </style>

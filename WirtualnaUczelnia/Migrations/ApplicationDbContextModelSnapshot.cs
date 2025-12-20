@@ -232,8 +232,15 @@ namespace WirtualnaUczelnia.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ImageAltText")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("ImageFileName")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -245,7 +252,7 @@ namespace WirtualnaUczelnia.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Buildings");
+                    b.ToTable("Buildings", (string)null);
                 });
 
             modelBuilder.Entity("WirtualnaUczelnia.Models.Location", b =>
@@ -266,19 +273,32 @@ namespace WirtualnaUczelnia.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("Floor")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ImageAltText")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("ImageFileName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BuildingId");
 
-                    b.ToTable("Locations");
+                    b.ToTable("Locations", (string)null);
                 });
 
             modelBuilder.Entity("WirtualnaUczelnia.Models.Transition", b =>
@@ -289,8 +309,14 @@ namespace WirtualnaUczelnia.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("Cost")
+                        .HasColumnType("int");
+
                     b.Property<int>("Direction")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsWheelchairAccessible")
                         .HasColumnType("bit");
@@ -313,7 +339,7 @@ namespace WirtualnaUczelnia.Migrations
 
                     b.HasIndex("TargetLocationId");
 
-                    b.ToTable("Transitions");
+                    b.ToTable("Transitions", (string)null);
                 });
 
             modelBuilder.Entity("WirtualnaUczelnia.Models.UserPreference", b =>
@@ -333,7 +359,7 @@ namespace WirtualnaUczelnia.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("UserPreferences");
+                    b.ToTable("UserPreferences", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

@@ -20,6 +20,13 @@ namespace WirtualnaUczelnia.Models
         [Display(Name = "Zdjęcie budynku")]
         public string? ImageFileName { get; set; } // <--- NOWE POLE
 
+        [Display(Name = "Tekst alternatywny (dla czytników)")]
+        [StringLength(500)]
+        public string? ImageAltText { get; set; } // Tekst alternatywny dla NVDA i innych czytników
+
+        [Display(Name = "Ukryty")]
+        public bool IsHidden { get; set; } = false; // Nowe pole - domyślnie widoczny
+
         // Lista lokacji w tym budynku
         public virtual ICollection<Location> Locations { get; set; } = new List<Location>();
     }

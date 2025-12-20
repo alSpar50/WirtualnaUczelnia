@@ -3,35 +3,70 @@
 @{ ViewData["Title"] = "Twoja Trasa"; }
 
 <div class="container mt-4">
-    <h2 class="mb-4">Trasa: <span class="text-muted">@ViewBag.StartName</span> &rarr; <span class="text-success">@ViewBag.EndName</span></h2>
+    <h1 class="mb-4" tabindex="0">
+        Trasa: <span class="text-muted">@ViewBag.StartName</span> 
+        <span aria-hidden="true">&rarr;</span> 
+        <span class="visually-hidden">do</span>
+        <span class="text-success">@ViewBag.EndName</span>
+    </h1>
 
     @if (Model == null || !Model.Any())
     {
-        <div class="alert alert-warning">
-            Nie znaleziono drogi pomiędzy tymi punktami. Być może brakuje połączeń w bazie lub trasa jest niedostępna (np. brak windy).
+        <div class="alert alert-warning" role="alert" tabindex="0">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            <strong>Nie znaleziono drogi</strong> pomiędzy tymi punktami. 
+            Być może brakuje połączeń w bazie lub trasa jest niedostępna (np. brak windy dla osób z niepełnosprawnością).
         </div>
-        <a asp-action="Index" class="btn btn-secondary">Szukaj innej trasy</a>
+        <a asp-action="Index" class="btn btn-secondary" aria-label="Wróć do wyszukiwania i szukaj innej trasy">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i> Szukaj innej trasy
+        </a>
     }
     else
     {
-        <div class="list-group shadow-sm">
-            @for (int i = 0; i < Model.Count; i++)
-            {
-                var step = Model[i];
-                <a href="/Explore?id=@step.TargetLocationId" class="list-group-item list-group-item-action d-flex align-items-center p-3">
-                    <div class="badge bg-primary rounded-pill me-3 fs-5">@(i + 1)</div>
-                    <div class="fs-2 me-3">@step.Icon</div>
-                    <div class="flex-grow-1 fs-5">@step.Instruction</div>
-                    <i class="bi bi-chevron-right text-muted"></i>
-                </a>
-            }
-        </div>
+        <p class="text-muted mb-3" tabindex="0" role="status">
+            Znaleziono trasę składającą się z <strong>@Model.Count</strong> kroków. 
+            Możesz kliknąć na każdy krok, aby zobaczyć podgląd lokalizacji.
+        </p>
+
+        <nav aria-label="Lista kroków nawigacji">
+            <ol class="list-group list-group-numbered shadow-sm">
+                @for (int i = 0; i < Model.Count; i++)
+                {
+                    var step = Model[i];
+                    bool isLast = i == Model.Count - 1;
+                    
+                    <li class="list-group-item d-flex justify-content-between align-items-start p-3">
+                        <div class="ms-2 me-auto">
+                            <div class="fw-bold fs-5" tabindex="0">
+                                <span class="fs-3 me-2" aria-hidden="true">@step.Icon</span>
+                                @step.Instruction
+                            </div>
+                            @if (isLast)
+                            {
+                                <span class="badge bg-success mt-1" tabindex="0">
+                                    <i class="bi bi-flag-fill" aria-hidden="true"></i> Cel podróży
+                                </span>
+                            }
+                        </div>
+                        <a href="/Explore?id=@step.TargetLocationId" 
+                           class="btn btn-outline-primary btn-sm"
+                           aria-label="Zobacz podgląd lokalizacji: krok @(i + 1) - @step.Instruction">
+                            <i class="bi bi-eye" aria-hidden="true"></i> Podgląd
+                        </a>
+                    </li>
+                }
+            </ol>
+        </nav>
         
-        <div class="mt-4">
-            <a href="/Explore?id=@Model.First().TargetLocationId" class="btn btn-success btn-lg">
-                <i class="bi bi-play-circle"></i> Rozpocznij nawigację wirtualną
+        <div class="mt-4 d-flex flex-wrap gap-2">
+            <a href="/Explore?id=@Model.First().TargetLocationId" class="btn btn-success btn-lg"
+               aria-label="Rozpocznij nawigację wirtualną od pierwszego kroku">
+                <i class="bi bi-play-circle" aria-hidden="true"></i> Rozpocznij nawigację wirtualną
             </a>
-            <a asp-action="Index" class="btn btn-outline-secondary btn-lg ms-2">Nowe wyszukiwanie</a>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-lg"
+               aria-label="Wróć do formularza i wyszukaj nową trasę">
+                <i class="bi bi-search" aria-hidden="true"></i> Nowe wyszukiwanie
+            </a>
         </div>
     }
 </div>

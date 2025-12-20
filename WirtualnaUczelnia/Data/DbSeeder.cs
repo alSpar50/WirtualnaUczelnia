@@ -6,20 +6,17 @@ namespace WirtualnaUczelnia.Data
 {
     public static class DbSeeder
     {
-        // Zmieniamy sygnaturę, aby przyjmowała IServiceProvider do pobrania UserManagera
         public static async Task Seed(IApplicationBuilder applicationBuilder)
         {
             using (var serviceScope = applicationBuilder.ApplicationServices.CreateScope())
             {
                 var context = serviceScope.ServiceProvider.GetService<ApplicationDbContext>();
                 var userManager = serviceScope.ServiceProvider.GetService<UserManager<IdentityUser>>();
-
-                // DODANO: Pobieramy RoleManager do zarządzania rolami
                 var roleManager = serviceScope.ServiceProvider.GetService<RoleManager<IdentityRole>>();
 
                 context.Database.Migrate();
 
-                // 1. Tworzenie Roli Admina (jeśli nie istnieje) - NOWY FRAGMENT
+                // 1. Tworzenie Roli Admina (jeśli nie istnieje)
                 if (!await roleManager.RoleExistsAsync("Admin"))
                 {
                     await roleManager.CreateAsync(new IdentityRole("Admin"));
@@ -37,27 +34,23 @@ namespace WirtualnaUczelnia.Data
                         Email = adminEmail,
                         EmailConfirmed = true
                     };
-                    // Tworzenie użytkownika z hasłem
                     await userManager.CreateAsync(newAdmin, "haslo1234PL!?");
-
-                    // DODANO: Przypisz rolę nowemu adminowi
                     await userManager.AddToRoleAsync(newAdmin, "Admin");
                 }
                 else
                 {
-                    // DODANO: Jeśli admin już istniał, upewnij się, że ma rolę
                     if (!await userManager.IsInRoleAsync(adminUser, "Admin"))
                     {
                         await userManager.AddToRoleAsync(adminUser, "Admin");
                     }
                 }
 
-                // 3. Seedowanie Budynków (bez zmian)
+                // 3. Seedowanie Budynków
                 if (!context.Buildings.Any())
                 {
                     var buildings = new List<Building>
                     {
-                        new Building { Symbol = "A", Name = "Rektorat", Description = "Powierzchnia 3160 m². Znajduje się tu: Sala Senatu, Rektorat, Biuro Kanclerza, Dziekanat, Kwestura, Biuro Karier i laboratoria." },
+                        new Building { Symbol = "A", Name = "Bud. Rektorat (A)", Description = "Powierzchnia 3160 m². Znajduje się tu: Sala Senatu, Rektorat, Biuro Kanclerza, Dziekanat, Kwestura, Biuro Karier i laboratoria." },
                         new Building { Symbol = "B", Name = "Budynek B", Description = "Powierzchnia 912 m². Znajduje się tu: Szkoła 'Profesor', biuro Parlamentu Studentów, PCK, Redakcja gazety Per Contra." },
                         new Building { Symbol = "C", Name = "Budynek C", Description = "Powierzchnia 1120 m². Znajdują się tu: dwie aule, sale wykładowe, księgarnia akademicka." },
                         new Building { Symbol = "D", Name = "Biblioteka", Description = "Powierzchnia 897 m². Znajduje się tu: biblioteka z czytelnią, wypożyczalnia oraz stanowiska komputerowe." },
@@ -70,19 +63,28 @@ namespace WirtualnaUczelnia.Data
                     context.SaveChanges();
                 }
 
-                // 4. Seedowanie Lokacji (bez zmian)
+                // 4. Seedowanie Lokacji
                 if (!context.Locations.Any())
                 {
                     var budynekA = context.Buildings.FirstOrDefault(b => b.Symbol == "A");
 
-                    // Przykładowa lokacja (jeśli nie masz swojego kodu lokacji, ten fragment zapobiegnie błędowi pustej bazy)
                     if (budynekA != null)
                     {
-                        // Tutaj możesz wstawić kod dodawania lokacji, jeśli go posiadasz,
-                        // w przeciwnym razie blok pozostaje pusty lub dodaje jedną przykładową lokację.
+                        // Tutaj możesz dodać przykładowe lokacje
                     }
 
                     context.SaveChanges();
+                }
+
+                // 5. NOWE: Napraw przejścia z Cost=0 (ustaw domyślny koszt 10)
+                var transitionsWithZeroCost = await context.Transitions.Where(t => t.Cost == 0).ToListAsync();
+                if (transitionsWithZeroCost.Any())
+                {
+                    foreach (var transition in transitionsWithZeroCost)
+                    {
+                        transition.Cost = 10; // Domyślny koszt
+                    }
+                    await context.SaveChangesAsync();
                 }
             }
         }

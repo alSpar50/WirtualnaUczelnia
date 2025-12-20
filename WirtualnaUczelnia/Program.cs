@@ -1,14 +1,29 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using WirtualnaUczelnia.Data; // Namespace Twoich danych (DbContext, Seeder)
-using WirtualnaUczelnia.Models; // Namespace Twoich modeli
+using WirtualnaUczelnia.Data;
+using WirtualnaUczelnia.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-// Konfiguracja bazy danych - u¿ywamy connection stringa z appsettings.json
+// Konfiguracja limitów uploadów (50MB)
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 52428800;
+    options.ValueLengthLimit = 52428800;
+    options.MultipartHeadersLengthLimit = 52428800;
+});
+
+// Konfiguracja Kestrel
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 52428800;
+    serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(2);
+    serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(1);
+});
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
@@ -17,36 +32,40 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-// *** KLUCZOWA ZMIANA ***
-// Zamiast AddDefaultIdentity, u¿ywamy pe³nej konfiguracji AddIdentity.
-// To rozwi¹zuje problem "No service for type UserManager".
-// Dodajemy te¿ AddDefaultUI, ¿eby dzia³a³y widoki logowania/rejestracji.
 builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders()
     .AddDefaultUI();
 
-builder.Services.AddRazorPages(); // Wymagane dla Identity UI
+builder.Services.AddRazorPages();
 
 builder.Services.AddScoped<WirtualnaUczelnia.Services.PathFinderService>();
 
-
-
 var app = builder.Build();
 
-// Uruchomienie Seedowania danych przy starcie aplikacji
-// (Upewnij siê, ¿e masz klasê DbSeeder w folderze Data)
-await DbSeeder.Seed(app);
+// Seedowanie z obs³ug¹ b³êdów
+try
+{
+    await DbSeeder.Seed(app);
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "B³¹d podczas seedowania bazy danych");
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseMigrationsEndPoint();
+    app.UseDeveloperExceptionPage();
+    
+    // NIE u¿ywaj Browser Link - mo¿e powodowaæ crashe w VS 2026
+    // app.UseBrowserLink(); // WY£¥CZONE
 }
 else
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -55,12 +74,12 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseAuthentication(); // Uwierzytelnianie (Kto to jest?)
-app.UseAuthorization();  // Autoryzacja (Co mo¿e robiæ?)
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
-app.MapRazorPages(); // Mapowanie stron Razor (dla Identity)
+app.MapRazorPages();
 
 app.Run();

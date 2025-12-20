@@ -16,7 +16,10 @@ namespace WirtualnaUczelnia.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var buildings = await _context.Buildings.ToListAsync();
+            // Filtruj ukryte budynki - u¿ytkownicy ich nie widz¹
+            var buildings = await _context.Buildings
+                .Where(b => !b.IsHidden)
+                .ToListAsync();
             return View(buildings);
         }
 
@@ -28,11 +31,12 @@ namespace WirtualnaUczelnia.Controllers
                 return RedirectToAction("Index");
             }
 
-            // Szukamy w Lokacjach (Nazwa lub Opis)
-            // Contains w SQL Server domyœlnie ignoruje wielkoœæ liter (Case Insensitive)
-            // To proste dopasowanie - znajdzie "legitymacja" w "legitymacjami"
+            // Szukamy tylko w widocznych lokacjach (nie ukrytych)
+            // oraz tylko w widocznych budynkach
             var results = await _context.Locations
                 .Include(l => l.Building)
+                .Where(l => !l.IsHidden) // Ukryte lokacje nie s¹ wyœwietlane
+                .Where(l => l.Building == null || !l.Building.IsHidden) // Lokacje z ukrytych budynków te¿ nie
                 .Where(l => l.Name.Contains(query) || (l.Description != null && l.Description.Contains(query)))
                 .ToListAsync();
 

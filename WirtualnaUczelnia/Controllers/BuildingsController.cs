@@ -10,7 +10,7 @@ namespace WirtualnaUczelnia.Controllers
     public class BuildingsController : Controller
     {
         private readonly ApplicationDbContext _context;
-        private readonly IWebHostEnvironment _hostEnvironment; // Niezbêdne do zapisu plików
+        private readonly IWebHostEnvironment _hostEnvironment;
 
         public BuildingsController(ApplicationDbContext context, IWebHostEnvironment hostEnvironment)
         {
@@ -21,6 +21,7 @@ namespace WirtualnaUczelnia.Controllers
         // GET: Buildings
         public async Task<IActionResult> Index()
         {
+            // Admin widzi wszystkie budynki (równie¿ ukryte)
             return View(await _context.Buildings.ToListAsync());
         }
 
@@ -45,16 +46,14 @@ namespace WirtualnaUczelnia.Controllers
         // POST: Buildings/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Symbol,Name,Description")] Building building, IFormFile? imageFile)
+        public async Task<IActionResult> Create([Bind("Id,Symbol,Name,Description,ImageAltText,IsHidden")] Building building, IFormFile? imageFile)
         {
-            // Logika zapisu zdjêcia
             if (imageFile != null)
             {
                 string wwwRootPath = _hostEnvironment.WebRootPath;
                 string fileName = "building_" + Guid.NewGuid().ToString() + Path.GetExtension(imageFile.FileName);
                 string path = Path.Combine(wwwRootPath, "images", fileName);
 
-                // Upewnij siê, ¿e folder istnieje
                 Directory.CreateDirectory(Path.Combine(wwwRootPath, "images"));
 
                 using (var fileStream = new FileStream(path, FileMode.Create))
@@ -64,7 +63,6 @@ namespace WirtualnaUczelnia.Controllers
                 building.ImageFileName = fileName;
             }
 
-            // Usuwamy ImageFileName z walidacji, bo nie jest przesy³ane w formularzu jako tekst
             ModelState.Remove("ImageFileName");
             ModelState.Remove("Locations");
 
@@ -90,16 +88,14 @@ namespace WirtualnaUczelnia.Controllers
         // POST: Buildings/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Symbol,Name,Description,ImageFileName")] Building building, IFormFile? imageFile)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Symbol,Name,Description,ImageFileName,ImageAltText,IsHidden")] Building building, IFormFile? imageFile)
         {
             if (id != building.Id) return NotFound();
 
-            // Pobieramy star¹ wersjê, ¿eby zachowaæ zdjêcie jeœli nie wybrano nowego
             var oldBuilding = await _context.Buildings.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
 
             if (imageFile != null)
             {
-                // U¿ytkownik wgra³ nowe zdjêcie
                 string wwwRootPath = _hostEnvironment.WebRootPath;
                 string fileName = "building_" + Guid.NewGuid().ToString() + Path.GetExtension(imageFile.FileName);
                 string path = Path.Combine(wwwRootPath, "images", fileName);
@@ -112,7 +108,6 @@ namespace WirtualnaUczelnia.Controllers
             }
             else
             {
-                // Zachowaj stare zdjêcie
                 building.ImageFileName = oldBuilding?.ImageFileName;
             }
 
@@ -134,6 +129,24 @@ namespace WirtualnaUczelnia.Controllers
                 return RedirectToAction(nameof(Index));
             }
             return View(building);
+        }
+
+        // POST: Buildings/ToggleVisibility/5 - Nowa akcja do prze³¹czania widocznoœci
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleVisibility(int id)
+        {
+            var building = await _context.Buildings.FindAsync(id);
+            if (building == null) return NotFound();
+
+            building.IsHidden = !building.IsHidden;
+            await _context.SaveChangesAsync();
+
+            TempData["Message"] = building.IsHidden 
+                ? $"Budynek {building.Symbol} zosta³ ukryty." 
+                : $"Budynek {building.Symbol} jest teraz widoczny.";
+
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: Buildings/Delete/5

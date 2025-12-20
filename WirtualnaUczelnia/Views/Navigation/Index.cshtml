@@ -2,60 +2,97 @@
     ViewData["Title"] = "Znajdź drogę";
 }
 
+<h1 class="visually-hidden" tabindex="0">Znajdź drogę - nawigacja po uczelni</h1>
 
 <div class="card-body">
+    
+    <!-- Komunikat o błędzie -->
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" tabindex="0">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Zamknij"></button>
+        </div>
+    }
     
     @if (User.Identity.IsAuthenticated)
     {
         @if (ViewBag.IsDisabledUser)
         {
-            <div class="alert alert-info border-info">
-                <i class="bi bi-person-wheelchair"></i> Tryb: <strong>Osoba z niepełnosprawnością</strong>
-                <br><small>Trasy będą omijać schody.</small>
+            <div class="alert alert-info border-info" role="status" tabindex="0">
+                <i class="bi bi-person-wheelchair" aria-hidden="true"></i> Tryb: <strong>Osoba z niepełnosprawnością</strong>
+                <br><small>Trasy będą omijać schody i wybierać dostępne przejścia.</small>
             </div>
         }
         else
         {
-            <div class="alert alert-light border">
-                <i class="bi bi-person-walking"></i> Tryb: <strong>Standardowy</strong>
+            <div class="alert alert-light border" role="status" tabindex="0">
+                <i class="bi bi-person-walking" aria-hidden="true"></i> Tryb: <strong>Standardowy</strong>
                 <br><small>Wszystkie trasy są dostępne.</small>
             </div>
         }
     }
     else
     {
-        <div class="alert alert-warning">
-            <i class="bi bi-exclamation-triangle"></i> Nie jesteś zalogowany. System wyznaczy trasę standardową.
+        <div class="alert alert-warning" role="alert" tabindex="0">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Nie jesteś zalogowany. System wyznaczy trasę standardową.
+            <a asp-area="Identity" asp-page="/Account/Login" class="alert-link">Zaloguj się</a>, aby dostosować trasy do Twoich potrzeb.
         </div>
     }
 
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h2 class="mb-0" tabindex="0">
+                        <i class="bi bi-map" aria-hidden="true"></i> Nawigacja po Uczelni
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form asp-action="FindRoute" role="form" aria-label="Formularz wyszukiwania drogi">
+                        <div class="form-group mb-3">
+                            <label for="startLocation" class="fw-bold">Gdzie jesteś?</label>
+                            <select name="startId" id="startLocation" class="form-control" asp-items="ViewBag.Locations" 
+                                    aria-describedby="startHelp" required>
+                                <option value="">-- Wybierz lokalizację startową --</option>
+                            </select>
+                            <small id="startHelp" class="form-text text-muted">Wybierz swoją obecną lokalizację</small>
+                        </div>
 
+                        <div class="text-center mb-3" aria-hidden="true">
+                            <i class="bi bi-arrow-down-circle fs-3 text-muted"></i>
+                        </div>
 
-<div class="row justify-content-center mt-5">
-    <div class="col-md-6">
-        <div class="card shadow">
-            <div class="card-header bg-info text-white">
-                <h3 class="mb-0"><i class="bi bi-map"></i> Nawigacja po Uczelni</h3>
-            </div>
-            <div class="card-body">
-                <form asp-action="FindRoute">
-                    <div class="form-group mb-3">
-                        <label class="fw-bold">Gdzie jesteś?</label>
-                        <select name="startId" class="form-control" asp-items="ViewBag.Locations"></select>
-                    </div>
+                        <div class="form-group mb-4">
+                            <label for="endLocation" class="fw-bold">Gdzie chcesz dojść?</label>
+                            <select name="endId" id="endLocation" class="form-control" asp-items="ViewBag.Locations" 
+                                    aria-describedby="endHelp" required>
+                                <option value="">-- Wybierz lokalizację docelową --</option>
+                            </select>
+                            <small id="endHelp" class="form-text text-muted">Wybierz miejsce docelowe</small>
+                        </div>
 
-                    <div class="text-center mb-3">
-                        <i class="bi bi-arrow-down-circle fs-3 text-muted"></i>
-                    </div>
-
-                    <div class="form-group mb-4">
-                        <label class="fw-bold">Gdzie chcesz dojść?</label>
-                        <select name="endId" class="form-control" asp-items="ViewBag.Locations"></select>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary w-100 btn-lg">Pokaż drogę</button>
-                </form>
+                        <button type="submit" class="btn btn-primary w-100 btn-lg" aria-label="Wyszukaj drogę między wybranymi lokalizacjami">
+                            <i class="bi bi-signpost-split" aria-hidden="true"></i> Pokaż drogę
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Walidacja po stronie klienta - sprawdź czy start != koniec
+        document.querySelector('form').addEventListener('submit', function(e) {
+            var start = document.getElementById('startLocation').value;
+            var end = document.getElementById('endLocation').value;
+            
+            if (start === end && start !== '') {
+                e.preventDefault();
+                alert('Lokalizacja startowa i docelowa nie mogą być takie same!');
+            }
+        });
+    </script>
+}

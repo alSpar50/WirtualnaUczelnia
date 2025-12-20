@@ -3,6 +3,13 @@
 
 @{
     ViewData["Title"] = "Wirtualny Spacer - " + Model.Name;
+    
+    // Przygotuj tekst alternatywny - priorytet: ImageAltText > Description > domyślny
+    string imageAltText = !string.IsNullOrEmpty(Model.ImageAltText) 
+        ? Model.ImageAltText 
+        : (!string.IsNullOrEmpty(Model.Description) 
+            ? $"Widok miejsca: {Model.Name}. {Model.Description}" 
+            : $"Widok miejsca: {Model.Name}");
 }
 
 <style>
@@ -12,12 +19,12 @@
         opacity: 0.9;
         transition: transform 0.2s, opacity 0.2s;
         border-radius: 50%;
-        width: 60px;
-        height: 60px;
+        width: 50px;
+        height: 50px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 30px;
+        font-size: 24px;
         border: 3px solid white;
         box-shadow: 0 0 15px rgba(0,0,0,0.7);
         z-index: 100;
@@ -26,15 +33,30 @@
         text-decoration: none;
     }
 
-        /* Styl focus dla strzałek - spójny z Twoim CSS */
-        .nav-arrow:hover, .nav-arrow:focus {
-            transform: translate(-50%, -50%) scale(1.2);
-            opacity: 1;
-            background-color: rgba(0,0,0,0.8);
-            color: #ffd700;
-            outline: 4px solid #ffc107;
-            outline-offset: 2px;
+    @@media (max-width: 768px) {
+        .nav-arrow {
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
         }
+    }
+
+    @@media (max-width: 480px) {
+        .nav-arrow {
+            width: 35px;
+            height: 35px;
+            font-size: 16px;
+        }
+    }
+
+    .nav-arrow:hover, .nav-arrow:focus {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 1;
+        background-color: rgba(0,0,0,0.8);
+        color: #ffd700;
+        outline: 4px solid #ffc107;
+        outline-offset: 2px;
+    }
 
     .image-container {
         position: relative;
@@ -42,107 +64,192 @@
         width: 100%;
         overflow: hidden;
         border-radius: 8px;
-        background-color: #eee;
-        min-height: 400px;
+        background-color: #000;
     }
 
-    /* KLUCZOWE: Styl focus dla samego obrazka */
+    .image-wrapper {
+        position: relative;
+        width: 100%;
+        padding-bottom: 50%;
+    }
+
+    .main-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
     .main-image:focus {
         outline: 4px solid #ffc107;
         outline-offset: -4px;
         opacity: 0.9;
+    }
+
+    .arrows-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+
+    .arrows-overlay .nav-arrow {
+        pointer-events: auto;
     }
 </style>
 
 <div class="container text-center mt-4">
 
     <div class="text-start mb-3">
-        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary" aria-label="Wróć do wyboru budynku">
-            &larr; Powrót do mapy kampusu
+        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary" aria-label="Kliknij aby wrócić do wyboru budynku na stronie głównej">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i> Powrót do mapy kampusu
         </a>
     </div>
 
     <div class="row">
         <div class="col-md-12">
 
-            <h1 class="visually-hidden">Jesteś w lokalizacji: @Model.Name</h1>
+            <!-- Nagłówek dla czytników ekranu -->
+            <h1 class="visually-hidden" tabindex="0" aria-label="Jesteś w lokalizacji: @Model.Name">Jesteś w lokalizacji: @Model.Name</h1>
 
-            <div class="card shadow-lg">
+            <!-- Informacja o nawigacji dla czytników -->
+            <div class="visually-hidden" role="status" aria-live="polite" tabindex="0" 
+                 aria-label="Aktualnie znajdujesz się w: @Model.Name. @(Model.Transitions != null && Model.Transitions.Any() ? $"Dostępnych jest {Model.Transitions.Count()} przejść do innych lokalizacji. Użyj klawisza Tab, aby nawigować po strzałkach." : "Brak przejść z tej lokalizacji.")">
+                Aktualnie znajdujesz się w: @Model.Name. 
+                @if (Model.Transitions != null && Model.Transitions.Any())
+                {
+                    <text>Dostępnych jest @Model.Transitions.Count() przejść do innych lokalizacji. Użyj klawisza Tab, aby nawigować po strzałkach.</text>
+                }
+            </div>
+
+            <div class="card shadow-lg" role="region" aria-label="Widok wirtualnego spaceru po lokalizacji @Model.Name">
                 <div class="card-body p-0">
 
                     <div class="image-container">
+                        <div class="image-wrapper">
+                            <img src="~/images/@Model.ImageFileName"
+                                 id="mainImage"
+                                 class="main-image"
+                                 tabindex="0"
+                                 role="img"
+                                 aria-label="@imageAltText. Naciśnij Enter, aby przejść do opisu tekstowego."
+                                 alt="@imageAltText"
+                                 onclick="focusDescription()"
+                                 onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focusDescription(); }"
+                                 onerror="this.onerror=null; this.src='https://via.placeholder.com/1200x600?text=Brak+pliku:+@Model.ImageFileName';" />
 
-                        <!--
-                           ZMIANY DLA DOSTĘPNOŚCI:
-                           Dodaliśmy id="mainImage" oraz onkeydown, aby obsłużyć Enter/Spację
-                        -->
-                        <img src="~/images/@Model.ImageFileName"
-                             id="mainImage"
-                             class="img-fluid w-100 main-image"
-                             tabindex="0"
-                             role="button"
-                             alt="Widok miejsca: @Model.Name. Opis szczegółowy: @(string.IsNullOrEmpty(Model.Description) ? "Brak opisu" : Model.Description). Naciśnij Enter, aby przejść do opisu tekstowego."
-                             onclick="focusDescription()"
-                             onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focusDescription(); }"
-                             onerror="this.onerror=null; this.src='https://via.placeholder.com/1200x600?text=Brak+pliku:+@Model.ImageFileName';" />
-
-                        @if (Model.Transitions == null || !Model.Transitions.Any())
-                        {
-                            <div class="alert alert-warning position-absolute top-50 start-50 translate-middle" role="alert">
-                                Brak zdefiniowanych przejść (strzałek) dla tej lokacji.
-                                @if (User.IsInRole("Admin"))
+                            <div class="arrows-overlay" role="navigation" aria-label="Nawigacja po lokalizacjach - strzałki kierunkowe">
+                                @if (Model.Transitions == null || !Model.Transitions.Any())
                                 {
-                                    <br>
-                                    <a asp-controller="Locations" asp-action="Index" class="btn btn-sm btn-warning mt-2">Zarządzaj Lokalizacjami</a>
+                                    <div class="alert alert-warning position-absolute top-50 start-50 translate-middle" role="alert" style="pointer-events: auto;" tabindex="0"
+                                         aria-label="Informacja: Brak zdefiniowanych przejść dla tej lokacji.">
+                                        Brak zdefiniowanych przejść (strzałek) dla tej lokacji.
+                                        @if (User.IsInRole("Admin"))
+                                        {
+                                            <br>
+                                            <a asp-controller="Locations" asp-action="Index" class="btn btn-sm btn-warning mt-2" aria-label="Przejdź do zarządzania lokalizacjami">Zarządzaj Lokalizacjami</a>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    @foreach (var transition in Model.Transitions)
+                                    {
+                                        string arrowIcon = "⬆️";
+                                        string directionName = "Prosto";
+                                        string targetName = transition.TargetLocation?.Name ?? "nieznane miejsce";
+                                        string accessibilityText = transition.IsWheelchairAccessible ? "Dostępne dla wózków." : "Uwaga: Schody, niedostępne dla wózków.";
+
+                                        switch (transition.Direction)
+                                        {
+                                            case WirtualnaUczelnia.Models.Direction.Forward: arrowIcon = "⬆️"; directionName = "Prosto"; break;
+                                            case WirtualnaUczelnia.Models.Direction.Back: arrowIcon = "⬇️"; directionName = "W tył"; break;
+                                            case WirtualnaUczelnia.Models.Direction.Left: arrowIcon = "⬅️"; directionName = "W lewo"; break;
+                                            case WirtualnaUczelnia.Models.Direction.Right: arrowIcon = "➡️"; directionName = "W prawo"; break;
+                                            case WirtualnaUczelnia.Models.Direction.Up: arrowIcon = "↗️"; directionName = "W górę"; break;
+                                            case WirtualnaUczelnia.Models.Direction.Down: arrowIcon = "↘️"; directionName = "W dół"; break;
+                                        }
+
+                                        <a asp-action="Index" asp-route-id="@transition.TargetLocationId"
+                                           class="nav-arrow"
+                                           style="left: @transition.PositionX%; top: @transition.PositionY%;"
+                                           title="@directionName do: @targetName"
+                                           aria-label="Strzałka @directionName. Prowadzi do: @targetName. @accessibilityText Naciśnij Enter, aby przejść."
+                                           tabindex="0"
+                                           role="link">
+                                            <span aria-hidden="true">@arrowIcon</span>
+                                        </a>
+                                    }
                                 }
                             </div>
-                        }
-                        else
-                        {
-                            @foreach (var transition in Model.Transitions)
-                            {
-                                string arrowIcon = "⬆️";
-                                string directionName = "Prosto";
-                                string targetName = transition.TargetLocation?.Name ?? "nieznane miejsce";
-                                string accessibilityText = transition.IsWheelchairAccessible ? "Dostępne dla wózków." : "Uwaga: Schody.";
-
-                                switch (transition.Direction)
-                                {
-                                    case WirtualnaUczelnia.Models.Direction.Forward: arrowIcon = "⬆️"; directionName = "Prosto"; break;
-                                    case WirtualnaUczelnia.Models.Direction.Back: arrowIcon = "⬇️"; directionName = "W tył"; break;
-                                    case WirtualnaUczelnia.Models.Direction.Left: arrowIcon = "⬅️"; directionName = "W lewo"; break;
-                                    case WirtualnaUczelnia.Models.Direction.Right: arrowIcon = "➡️"; directionName = "W prawo"; break;
-                                    case WirtualnaUczelnia.Models.Direction.Up: arrowIcon = "↗️"; directionName = "W górę"; break;
-                                    case WirtualnaUczelnia.Models.Direction.Down: arrowIcon = "↘️"; directionName = "W dół"; break;
-                                }
-
-                                <a asp-action="Index" asp-route-id="@transition.TargetLocationId"
-                                   class="nav-arrow"
-                                   style="left: @transition.PositionX%; top: @transition.PositionY%;"
-                                   title="@directionName do: @targetName"
-                                   aria-label="Idź @directionName do miejsca: @targetName. @accessibilityText"
-                                   tabindex="0"
-                                   role="button">
-                                    <span aria-hidden="true">@arrowIcon</span>
-                                </a>
-                            }
-                        }
+                        </div>
                     </div>
 
                 </div>
                 <div class="card-footer text-start">
-                    <h2 class="card-title" tabindex="0" id="locationTitle">@Model.Name</h2>
-                    <p class="card-text lead" tabindex="0" id="locationDesc">@Model.Description</p>
+                    <h2 class="card-title" tabindex="0" id="locationTitle" aria-label="Nazwa lokalizacji: @Model.Name">@Model.Name</h2>
+                    <p class="card-text lead" tabindex="0" id="locationDesc" 
+                       aria-label="Opis lokalizacji: @(string.IsNullOrEmpty(Model.Description) ? "Brak opisu dla tej lokalizacji." : Model.Description)">
+                        @(string.IsNullOrEmpty(Model.Description) ? "Brak opisu dla tej lokalizacji." : Model.Description)
+                    </p>
 
                     @if (!string.IsNullOrEmpty(Model.AudioFileName))
                     {
-                        <div class="my-2 p-2 bg-light rounded border">
-                            <strong>Lektor:</strong>
-                            <audio controls class="w-100 mt-1" aria-label="Odtwórz opis miejsca">
+                        <div class="my-2 p-2 bg-light rounded border" role="region" aria-label="Sekcja z nagraniem lektora">
+                            <strong tabindex="0" aria-label="Lektor - nagranie audio dostępne poniżej"><i class="bi bi-mic" aria-hidden="true"></i> Lektor:</strong>
+                            <audio controls class="w-100 mt-1" aria-label="Odtwarzacz audio. Nagranie lektora opisujące miejsce @Model.Name. Użyj spacji aby odtworzyć lub zatrzymać.">
                                 <source src="~/audio/@Model.AudioFileName" type="audio/mpeg">
-                                Twój lektor nie działa.
+                                Twoja przeglądarka nie obsługuje odtwarzacza audio.
                             </audio>
                         </div>
+                    }
+
+                    <!-- Lista dostępnych przejść w formie tekstowej dla czytników -->
+                    @if (Model.Transitions != null && Model.Transitions.Any())
+                    {
+                        <details class="mt-3">
+                            <summary class="fw-bold text-primary" style="cursor: pointer;" tabindex="0"
+                                     aria-label="Rozwiń listę dostępnych przejść. Liczba przejść: @Model.Transitions.Count()">
+                                <i class="bi bi-signpost-split" aria-hidden="true"></i> 
+                                Lista dostępnych przejść (@Model.Transitions.Count())
+                            </summary>
+                            <ul class="list-group mt-2" role="list" aria-label="Lista przejść do innych lokalizacji">
+                                @foreach (var transition in Model.Transitions)
+                                {
+                                    string dirName = transition.Direction switch
+                                    {
+                                        WirtualnaUczelnia.Models.Direction.Forward => "Prosto",
+                                        WirtualnaUczelnia.Models.Direction.Back => "W tył",
+                                        WirtualnaUczelnia.Models.Direction.Left => "W lewo",
+                                        WirtualnaUczelnia.Models.Direction.Right => "W prawo",
+                                        WirtualnaUczelnia.Models.Direction.Up => "W górę",
+                                        WirtualnaUczelnia.Models.Direction.Down => "W dół",
+                                        _ => "Przejście"
+                                    };
+                                    string targetName = transition.TargetLocation?.Name ?? "nieznane miejsce";
+                                    string accessIcon = transition.IsWheelchairAccessible ? "✓" : "⚠️";
+                                    string accessText = transition.IsWheelchairAccessible ? "Dostępne dla wózków" : "Schody - niedostępne dla wózków";
+
+                                    <li class="list-group-item d-flex justify-content-between align-items-center" role="listitem">
+                                        <a asp-action="Index" asp-route-id="@transition.TargetLocationId" 
+                                           class="text-decoration-none"
+                                           aria-label="Kliknij aby przejść @dirName do lokalizacji @targetName. @accessText">
+                                            <strong>@dirName</strong> → @targetName
+                                        </a>
+                                        <span class="badge @(transition.IsWheelchairAccessible ? "bg-success" : "bg-warning text-dark")" 
+                                              tabindex="0" 
+                                              role="text"
+                                              aria-label="Dostępność: @accessText">
+                                            @accessIcon @accessText
+                                        </span>
+                                    </li>
+                                }
+                            </ul>
+                        </details>
                     }
                 </div>
             </div>

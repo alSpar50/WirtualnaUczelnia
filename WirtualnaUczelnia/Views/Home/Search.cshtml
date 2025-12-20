@@ -5,40 +5,71 @@
 }
 
 <div class="container mt-4">
-    <a asp-action="Index" class="btn btn-outline-secondary mb-3">&larr; Wróć do strony głównej</a>
+    <a asp-action="Index" class="btn btn-outline-secondary mb-3" aria-label="Wróć do strony głównej">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i> Wróć do strony głównej
+    </a>
 
-    <h2>Wyniki wyszukiwania dla: <span class="text-primary">"@ViewBag.Query"</span></h2>
-    <p class="text-muted">Znaleziono @Model.Count() wyników.</p>
+    <h1 tabindex="0">
+        Wyniki wyszukiwania dla: <span class="text-primary">"@ViewBag.Query"</span>
+    </h1>
+    <p class="text-muted" tabindex="0" role="status">Znaleziono <strong>@Model.Count()</strong> wyników.</p>
 
     @if (!Model.Any())
     {
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> Nie znaleziono żadnych miejsc pasujących do Twojego zapytania. Spróbuj wpisać inne słowo kluczowe.
+        <div class="alert alert-info" role="alert" tabindex="0">
+            <i class="bi bi-info-circle" aria-hidden="true"></i> 
+            Nie znaleziono żadnych miejsc pasujących do Twojego zapytania. 
+            Spróbuj wpisać inne słowo kluczowe, np. "dziekanat", "aula", "biblioteka".
         </div>
     }
     else
     {
-        <div class="list-group shadow-sm">
-            @foreach (var item in Model)
-            {
-                <a href="/Explore?id=@item.Id" class="list-group-item list-group-item-action p-3 d-flex align-items-center">
-                    <!-- Miniatura -->
-                    <div class="me-3" style="width: 80px; height: 60px; overflow: hidden; border-radius: 5px; flex-shrink: 0;">
-                        <img src="~/images/@item.ImageFileName" class="w-100 h-100" style="object-fit: cover;"
-                             onerror="this.src='https://via.placeholder.com/80x60?text=Brak'" />
-                    </div>
-
-                    <!-- Treść -->
-                    <div class="flex-grow-1">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1 text-primary">@item.Name</h5>
-                            <small class="text-muted">@(item.Building?.Name ?? "Brak budynku")</small>
+        <nav aria-label="Lista wyników wyszukiwania">
+            <div class="list-group shadow-sm" role="list">
+                @foreach (var item in Model)
+                {
+                    string altText = !string.IsNullOrEmpty(item.ImageAltText) 
+                        ? item.ImageAltText 
+                        : $"Zdjęcie lokalizacji {item.Name}";
+                    
+                    <a href="/Explore?id=@item.Id" 
+                       class="list-group-item list-group-item-action p-3 d-flex align-items-center"
+                       role="listitem"
+                       aria-label="Przejdź do lokalizacji @item.Name w budynku @(item.Building?.Name ?? "nieokreślonym")">
+                        
+                        <!-- Miniatura -->
+                        <div class="me-3" style="width: 80px; height: 60px; overflow: hidden; border-radius: 5px; flex-shrink: 0;">
+                            <img src="~/images/@item.ImageFileName" 
+                                 class="w-100 h-100" 
+                                 style="object-fit: cover;"
+                                 alt="@altText"
+                                 onerror="this.src='https://via.placeholder.com/80x60?text=Brak'" />
                         </div>
-                        <p class="mb-1 text-muted small">@item.Description</p>
-                    </div>
-                    <i class="bi bi-chevron-right text-muted ms-3"></i>
-                </a>
-            }
-        </div>
+
+                        <!-- Treść -->
+                        <div class="flex-grow-1">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h2 class="mb-1 text-primary h5">@item.Name</h2>
+                                <small class="text-muted">
+                                    @if (item.Building != null)
+                                    {
+                                        <span class="badge bg-secondary">@item.Building.Symbol</span>
+                                        @item.Building.Name
+                                    }
+                                    else
+                                    {
+                                        <span>Brak budynku</span>
+                                    }
+                                </small>
+                            </div>
+                            <p class="mb-1 text-muted small">
+                                @(string.IsNullOrEmpty(item.Description) ? "Brak opisu" : item.Description)
+                            </p>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted ms-3" aria-hidden="true"></i>
+                    </a>
+                }
+            </div>
+        </nav>
     }
 </div>

@@ -4,54 +4,86 @@
     ViewData["Title"] = "Edytuj lokacjê";
 }
 
-<h1>Edytuj lokacjê</h1>
+<h1 tabindex="0">Edytuj lokacjê</h1>
 <hr />
 <div class="row">
     <div class="col-md-6">
         <form asp-action="Edit" enctype="multipart/form-data">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
             <input type="hidden" asp-for="Id" />
-            <!-- Te pola s¹ ukryte, ale wa¿ne - przechowuj¹ stare nazwy, jeœli u¿ytkownik nie wgra nowych -->
             <input type="hidden" asp-for="ImageFileName" />
             <input type="hidden" asp-for="AudioFileName" />
 
             <div class="form-group mb-3">
-                <label asp-for="Name" class="control-label">Nazwa miejsca</label>
+                <label asp-for="Name" class="control-label fw-bold">Nazwa miejsca</label>
                 <input asp-for="Name" class="form-control" />
-                <span asp-validation-for="Name" class="text-danger"></span>
+                <span asp-validation-for="Name" class="text-danger" role="alert"></span>
             </div>
 
             <div class="form-group mb-3">
-                <label asp-for="Description" class="control-label">Opis</label>
+                <label asp-for="Description" class="control-label fw-bold">Opis</label>
                 <textarea asp-for="Description" class="form-control" rows="3"></textarea>
-                <span asp-validation-for="Description" class="text-danger"></span>
+                <span asp-validation-for="Description" class="text-danger" role="alert"></span>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label asp-for="Type" class="control-label fw-bold">Typ lokalizacji</label>
+                    <select asp-for="Type" class="form-select" asp-items="Html.GetEnumSelectList<WirtualnaUczelnia.Models.LocationType>()"></select>
+                    <small class="form-text text-muted">Pomaga w nawigacji i generowaniu instrukcji</small>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Floor" class="control-label fw-bold">Piêtro</label>
+                    <input asp-for="Floor" type="number" class="form-control" />
+                    <small class="form-text text-muted">0 = parter, 1 = I piêtro, -1 = piwnica</small>
+                </div>
             </div>
 
             <div class="form-group mb-3">
-                <label asp-for="BuildingId" class="control-label">Budynek</label>
+                <label asp-for="BuildingId" class="control-label fw-bold">Budynek</label>
                 <select asp-for="BuildingId" class="form-control" asp-items="ViewBag.BuildingId">
                     <option value="">-- Wybierz budynek --</option>
                 </select>
             </div>
 
             <div class="card mb-3">
-                <div class="card-header bg-light">Multimedia</div>
+                <div class="card-header bg-light fw-bold">
+                    <i class="bi bi-collection" aria-hidden="true"></i> Multimedia
+                </div>
                 <div class="card-body">
                     <!-- Sekcja Zdjêcia -->
                     <div class="mb-3">
                         <p class="mb-1"><strong>Obecne zdjêcie:</strong></p>
                         @if (!string.IsNullOrEmpty(Model.ImageFileName))
                         {
-                            <img src="~/images/@Model.ImageFileName" class="img-thumbnail mb-2" style="max-height: 150px;" />
+                            <img src="~/images/@Model.ImageFileName" 
+                                 class="img-thumbnail mb-2" 
+                                 style="max-height: 150px;" 
+                                 alt="@(Model.ImageAltText ?? $"Zdjêcie lokacji {Model.Name}")"
+                                 tabindex="0" />
                             <div><small class="text-muted">Plik: @Model.ImageFileName</small></div>
                         }
                         else
                         {
-                            <span class="text-warning">Brak zdjêcia</span>
+                            <span class="text-warning" tabindex="0">Brak zdjêcia</span>
                         }
 
                         <label class="control-label mt-2 fw-bold">Wgraj nowe zdjêcie (zast¹pi obecne):</label>
                         <input type="file" name="imageFile" class="form-control" accept="image/*" />
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="ImageAltText" class="control-label fw-bold">
+                            <i class="bi bi-universal-access text-primary" aria-hidden="true"></i> Tekst alternatywny (dla czytników ekranu)
+                        </label>
+                        <textarea asp-for="ImageAltText" class="form-control" rows="3" 
+                                  placeholder="np. Widok na korytarz z drzwiami po lewej stronie..."
+                                  aria-describedby="altHelp"></textarea>
+                        <small id="altHelp" class="form-text text-muted">
+                            <strong>Wa¿ne!</strong> Ten tekst zostanie odczytany przez czytniki ekranu (np. NVDA).
+                            Opisz szczegó³owo, co widaæ na zdjêciu.
+                        </small>
+                        <span asp-validation-for="ImageAltText" class="text-danger" role="alert"></span>
                     </div>
 
                     <hr />
@@ -61,14 +93,15 @@
                         <p class="mb-1"><strong>Obecny lektor:</strong></p>
                         @if (!string.IsNullOrEmpty(Model.AudioFileName))
                         {
-                            <audio controls class="w-100 mb-2">
+                            <audio controls class="w-100 mb-2" aria-label="Odtwórz nagranie lektora dla tej lokacji">
                                 <source src="~/audio/@Model.AudioFileName" type="audio/mpeg">
+                                Twoja przegl¹darka nie obs³uguje odtwarzacza audio.
                             </audio>
                             <div><small class="text-muted">Plik: @Model.AudioFileName</small></div>
                         }
                         else
                         {
-                            <span class="text-muted">Brak pliku audio</span>
+                            <span class="text-muted" tabindex="0">Brak pliku audio</span>
                         }
 
                         <label class="control-label mt-2 fw-bold">Wgraj nowy plik audio:</label>
@@ -77,9 +110,28 @@
                 </div>
             </div>
 
-            <div class="form-group">
-                <input type="submit" value="Zapisz zmiany" class="btn btn-success" />
-                <a asp-action="Index" class="btn btn-secondary">Powrót</a>
+            <!-- Checkbox ukrycia -->
+            <div class="form-check mb-3 p-3 @(Model.IsHidden ? "bg-warning bg-opacity-25" : "bg-light") border rounded">
+                <input class="form-check-input ms-1" asp-for="IsHidden" id="isHiddenCheck" style="transform: scale(1.3);" />
+                <label class="form-check-label fw-bold ms-2" for="isHiddenCheck">
+                    <i class="bi bi-eye-slash text-secondary" aria-hidden="true"></i> Ukryta
+                </label>
+                <div class="form-text ms-1 mt-1">
+                    Zaznacz, jeœli lokacja ma byæ tymczasowo niewidoczna dla u¿ytkowników.
+                    @if (Model.IsHidden)
+                    {
+                        <strong class="text-warning">Ta lokacja jest obecnie ukryta!</strong>
+                    }
+                </div>
+            </div>
+
+            <div class="form-group d-flex gap-2">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-save" aria-hidden="true"></i> Zapisz zmiany
+                </button>
+                <a asp-action="Index" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left" aria-hidden="true"></i> Powrót
+                </a>
             </div>
         </form>
     </div>

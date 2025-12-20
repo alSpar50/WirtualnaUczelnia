@@ -12,6 +12,13 @@ namespace WirtualnaUczelnia.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _hostEnvironment;
+        
+        // Maksymalny rozmiar pliku: 10 MB
+        private const long MaxFileSize = 10 * 1024 * 1024;
+        // Dozwolone rozszerzenia obrazów
+        private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        // Dozwolone rozszerzenia audio
+        private static readonly string[] AllowedAudioExtensions = { ".mp3", ".wav", ".ogg", ".m4a" };
 
         public LocationsController(ApplicationDbContext context, IWebHostEnvironment hostEnvironment)
         {
@@ -43,7 +50,6 @@ namespace WirtualnaUczelnia.Controllers
         // GET: Locations/Create
         public IActionResult Create()
         {
-            // Tutaj "Name" zamiast "Symbol", ¿eby w liœcie by³a pe³na nazwa budynku
             ViewData["BuildingId"] = new SelectList(_context.Buildings, "Id", "Name");
             return View();
         }
@@ -51,62 +57,116 @@ namespace WirtualnaUczelnia.Controllers
         // POST: Locations/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Name,Description,BuildingId")] Location location, IFormFile? imageFile, IFormFile? audioFile)
+        [RequestSizeLimit(52428800)]
+        public async Task<IActionResult> Create([Bind("Id,Name,Description,BuildingId,ImageAltText,IsHidden,Type,Floor")] Location location, IFormFile? imageFile, IFormFile? audioFile)
         {
-            // 1. Obs³uga zdjêcia
+            // Walidacja pliku obrazu
             if (imageFile != null)
             {
-                string wwwRootPath = _hostEnvironment.WebRootPath;
-                string fileName = Guid.NewGuid().ToString() + Path.GetExtension(imageFile.FileName);
-                string path = Path.Combine(wwwRootPath, "images", fileName);
-
-                Directory.CreateDirectory(Path.Combine(wwwRootPath, "images")); // Upewnij siê, ¿e folder istnieje
-
-                using (var fileStream = new FileStream(path, FileMode.Create))
+                var imageValidation = ValidateFile(imageFile, AllowedImageExtensions, "obrazu");
+                if (imageValidation != null)
                 {
-                    await imageFile.CopyToAsync(fileStream);
+                    ModelState.AddModelError("imageFile", imageValidation);
                 }
-                location.ImageFileName = fileName;
+            }
+
+            // Walidacja pliku audio
+            if (audioFile != null)
+            {
+                var audioValidation = ValidateFile(audioFile, AllowedAudioExtensions, "audio");
+                if (audioValidation != null)
+                {
+                    ModelState.AddModelError("audioFile", audioValidation);
+                }
+            }
+
+            // Usuñ walidacjê dla pól nawigacyjnych
+            ModelState.Remove("ImageFileName");
+            ModelState.Remove("AudioFileName");
+            ModelState.Remove("Transitions");
+            ModelState.Remove("Building");
+
+            // SprawdŸ czy s¹ b³êdy walidacji PRZED prób¹ zapisu plików
+            if (!ModelState.IsValid)
+            {
+                ViewData["BuildingId"] = new SelectList(_context.Buildings, "Id", "Name", location.BuildingId);
+                return View(location);
+            }
+
+            // 1. Obs³uga zdjêcia
+            if (imageFile != null && imageFile.Length > 0)
+            {
+                try
+                {
+                    string wwwRootPath = _hostEnvironment.WebRootPath;
+                    string fileName = Guid.NewGuid().ToString() + Path.GetExtension(imageFile.FileName).ToLower();
+                    string path = Path.Combine(wwwRootPath, "images", fileName);
+
+                    Directory.CreateDirectory(Path.Combine(wwwRootPath, "images"));
+
+                    using (var fileStream = new FileStream(path, FileMode.Create))
+                    {
+                        await imageFile.CopyToAsync(fileStream);
+                    }
+                    location.ImageFileName = fileName;
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("imageFile", $"B³¹d podczas zapisywania obrazu: {ex.Message}");
+                    ViewData["BuildingId"] = new SelectList(_context.Buildings, "Id", "Name", location.BuildingId);
+                    return View(location);
+                }
             }
             else
             {
+                // WA¯NE: Ustaw domyœlny obraz jeœli nie przes³ano pliku
                 location.ImageFileName = "default.jpg";
             }
 
             // 2. Obs³uga audio
-            if (audioFile != null)
+            if (audioFile != null && audioFile.Length > 0)
             {
-                string wwwRootPath = _hostEnvironment.WebRootPath;
-                string fileName = Guid.NewGuid().ToString() + Path.GetExtension(audioFile.FileName);
-                string path = Path.Combine(wwwRootPath, "audio", fileName);
-
-                Directory.CreateDirectory(Path.Combine(wwwRootPath, "audio"));
-
-                using (var fileStream = new FileStream(path, FileMode.Create))
+                try
                 {
-                    await audioFile.CopyToAsync(fileStream);
+                    string wwwRootPath = _hostEnvironment.WebRootPath;
+                    string fileName = Guid.NewGuid().ToString() + Path.GetExtension(audioFile.FileName).ToLower();
+                    string path = Path.Combine(wwwRootPath, "audio", fileName);
+
+                    Directory.CreateDirectory(Path.Combine(wwwRootPath, "audio"));
+
+                    using (var fileStream = new FileStream(path, FileMode.Create))
+                    {
+                        await audioFile.CopyToAsync(fileStream);
+                    }
+                    location.AudioFileName = fileName;
                 }
-                location.AudioFileName = fileName;
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("audioFile", $"B³¹d podczas zapisywania audio: {ex.Message}");
+                    ViewData["BuildingId"] = new SelectList(_context.Buildings, "Id", "Name", location.BuildingId);
+                    return View(location);
+                }
             }
 
-            // 3. Usuwamy b³êdy walidacji dla pól, które uzupe³niliœmy rêcznie w kodzie
-            // Jeœli w modelu Location te pola s¹ [Required], to bez tego ModelState.IsValid zawsze bêdzie false!
-            ModelState.Remove("ImageFileName");
-            ModelState.Remove("AudioFileName");
-            // Jeœli masz kolekcjê Transitions w modelu i jest ona wymagana, te¿ j¹ usuñ z walidacji
-            ModelState.Remove("Transitions");
-            ModelState.Remove("Building"); // Relacja te¿ nie jest przesy³ana w formularzu
+            // Upewnij siê, ¿e ImageFileName nie jest null
+            if (string.IsNullOrEmpty(location.ImageFileName))
+            {
+                location.ImageFileName = "default.jpg";
+            }
 
-            if (ModelState.IsValid)
+            try
             {
                 _context.Add(location);
                 await _context.SaveChangesAsync();
+                TempData["Message"] = $"Lokacja \"{location.Name}\" zosta³a utworzona.";
                 return RedirectToAction(nameof(Index));
             }
-
-            // Jeœli walidacja nie przesz³a, poka¿ formularz ponownie z b³êdami
-            ViewData["BuildingId"] = new SelectList(_context.Buildings, "Id", "Name", location.BuildingId);
-            return View(location);
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", $"B³¹d podczas zapisywania do bazy: {ex.Message}");
+                ViewData["BuildingId"] = new SelectList(_context.Buildings, "Id", "Name", location.BuildingId);
+                return View(location);
+            }
         }
 
         // GET: Locations/Edit/5
@@ -124,66 +184,109 @@ namespace WirtualnaUczelnia.Controllers
         // POST: Locations/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Description,BuildingId")] Location location, IFormFile? imageFile, IFormFile? audioFile)
+        [RequestSizeLimit(52428800)]
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Description,BuildingId,ImageAltText,IsHidden,Type,Floor")] Location location, IFormFile? imageFile, IFormFile? audioFile)
         {
             if (id != location.Id) return NotFound();
 
-            // 1. Pobierz "star¹" wersjê z bazy, ¿eby wiedzieæ, jakie by³y nazwy plików
-            // U¿ywamy AsNoTracking(), ¿eby nie blokowaæ EF przy póŸniejszym Update
             var oldLocation = await _context.Locations
                 .AsNoTracking()
                 .FirstOrDefaultAsync(l => l.Id == id);
 
             if (oldLocation == null) return NotFound();
 
-            // 2. Obs³uga Zdjêcia
+            // Walidacja plików
             if (imageFile != null)
             {
-                // U¿ytkownik wgra³ nowe zdjêcie -> Zapisz je i nadpisz nazwê
-                string wwwRootPath = _hostEnvironment.WebRootPath;
-                string fileName = Guid.NewGuid().ToString() + Path.GetExtension(imageFile.FileName);
-                string path = Path.Combine(wwwRootPath, "images", fileName);
-
-                Directory.CreateDirectory(Path.Combine(wwwRootPath, "images"));
-
-                using (var stream = new FileStream(path, FileMode.Create))
+                var imageValidation = ValidateFile(imageFile, AllowedImageExtensions, "obrazu");
+                if (imageValidation != null)
                 {
-                    await imageFile.CopyToAsync(stream);
+                    ModelState.AddModelError("imageFile", imageValidation);
                 }
-                location.ImageFileName = fileName;
-            }
-            else
-            {
-                // U¿ytkownik NIE wgra³ zdjêcia -> Zachowaj star¹ nazwê z bazy
-                location.ImageFileName = oldLocation.ImageFileName;
             }
 
-            // 3. Obs³uga Audio
             if (audioFile != null)
             {
-                string wwwRootPath = _hostEnvironment.WebRootPath;
-                string fileName = Guid.NewGuid().ToString() + Path.GetExtension(audioFile.FileName);
-                string path = Path.Combine(wwwRootPath, "audio", fileName);
-
-                Directory.CreateDirectory(Path.Combine(wwwRootPath, "audio"));
-
-                using (var stream = new FileStream(path, FileMode.Create))
+                var audioValidation = ValidateFile(audioFile, AllowedAudioExtensions, "audio");
+                if (audioValidation != null)
                 {
-                    await audioFile.CopyToAsync(stream);
+                    ModelState.AddModelError("audioFile", audioValidation);
                 }
-                location.AudioFileName = fileName;
-            }
-            else
-            {
-                // Zachowaj stare audio
-                location.AudioFileName = oldLocation.AudioFileName;
             }
 
-            // 4. KLUCZOWE: Usuñ walidacjê dla pól, które "naprawiliœmy" rêcznie
             ModelState.Remove("ImageFileName");
             ModelState.Remove("AudioFileName");
             ModelState.Remove("Transitions");
             ModelState.Remove("Building");
+
+            if (!ModelState.IsValid)
+            {
+                ViewData["BuildingId"] = new SelectList(_context.Buildings, "Id", "Name", location.BuildingId);
+                return View(location);
+            }
+
+            // 2. Obs³uga Zdjêcia
+            if (imageFile != null && imageFile.Length > 0)
+            {
+                try
+                {
+                    string wwwRootPath = _hostEnvironment.WebRootPath;
+                    string fileName = Guid.NewGuid().ToString() + Path.GetExtension(imageFile.FileName).ToLower();
+                    string path = Path.Combine(wwwRootPath, "images", fileName);
+
+                    Directory.CreateDirectory(Path.Combine(wwwRootPath, "images"));
+
+                    using (var stream = new FileStream(path, FileMode.Create))
+                    {
+                        await imageFile.CopyToAsync(stream);
+                    }
+                    location.ImageFileName = fileName;
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("imageFile", $"B³¹d podczas zapisywania obrazu: {ex.Message}");
+                    location.ImageFileName = oldLocation.ImageFileName;
+                }
+            }
+            else
+            {
+                // Zachowaj star¹ nazwê pliku
+                location.ImageFileName = oldLocation.ImageFileName;
+            }
+
+            // 3. Obs³uga Audio
+            if (audioFile != null && audioFile.Length > 0)
+            {
+                try
+                {
+                    string wwwRootPath = _hostEnvironment.WebRootPath;
+                    string fileName = Guid.NewGuid().ToString() + Path.GetExtension(audioFile.FileName).ToLower();
+                    string path = Path.Combine(wwwRootPath, "audio", fileName);
+
+                    Directory.CreateDirectory(Path.Combine(wwwRootPath, "audio"));
+
+                    using (var stream = new FileStream(path, FileMode.Create))
+                    {
+                        await audioFile.CopyToAsync(stream);
+                    }
+                    location.AudioFileName = fileName;
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("audioFile", $"B³¹d podczas zapisywania audio: {ex.Message}");
+                    location.AudioFileName = oldLocation.AudioFileName;
+                }
+            }
+            else
+            {
+                location.AudioFileName = oldLocation.AudioFileName;
+            }
+
+            // Upewnij siê, ¿e ImageFileName nie jest null
+            if (string.IsNullOrEmpty(location.ImageFileName))
+            {
+                location.ImageFileName = oldLocation.ImageFileName ?? "default.jpg";
+            }
 
             if (ModelState.IsValid)
             {
@@ -191,6 +294,7 @@ namespace WirtualnaUczelnia.Controllers
                 {
                     _context.Update(location);
                     await _context.SaveChangesAsync();
+                    TempData["Message"] = $"Lokacja \"{location.Name}\" zosta³a zaktualizowana.";
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -200,9 +304,26 @@ namespace WirtualnaUczelnia.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Jeœli tu trafiliœmy, to znaczy ¿e jest b³¹d walidacji (np. pusta Nazwa)
             ViewData["BuildingId"] = new SelectList(_context.Buildings, "Id", "Name", location.BuildingId);
             return View(location);
+        }
+
+        // POST: Locations/ToggleVisibility/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleVisibility(int id)
+        {
+            var location = await _context.Locations.FindAsync(id);
+            if (location == null) return NotFound();
+
+            location.IsHidden = !location.IsHidden;
+            await _context.SaveChangesAsync();
+
+            TempData["Message"] = location.IsHidden 
+                ? $"Lokacja \"{location.Name}\" zosta³a ukryta." 
+                : $"Lokacja \"{location.Name}\" jest teraz widoczna.";
+
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: Locations/Delete/5
@@ -230,12 +351,32 @@ namespace WirtualnaUczelnia.Controllers
             }
 
             await _context.SaveChangesAsync();
+            TempData["Message"] = "Lokacja zosta³a usuniêta.";
             return RedirectToAction(nameof(Index));
         }
 
         private bool LocationExists(int id)
         {
             return _context.Locations.Any(e => e.Id == id);
+        }
+
+        /// <summary>
+        /// Waliduje plik - sprawdza rozmiar i rozszerzenie
+        /// </summary>
+        private string? ValidateFile(IFormFile file, string[] allowedExtensions, string fileTypeName)
+        {
+            if (file.Length > MaxFileSize)
+            {
+                return $"Plik {fileTypeName} jest za du¿y ({file.Length / 1024 / 1024} MB). Maksymalny rozmiar to {MaxFileSize / 1024 / 1024} MB.";
+            }
+
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+            {
+                return $"Niedozwolony format pliku {fileTypeName}. Dozwolone: {string.Join(", ", allowedExtensions)}";
+            }
+
+            return null;
         }
     }
 }
