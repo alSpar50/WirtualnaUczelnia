@@ -25,7 +25,7 @@
     {
         <p class="text-muted mb-3" tabindex="0" role="status">
             Znaleziono trasę składającą się z <strong>@Model.Count</strong> kroków. 
-            Możesz kliknąć na każdy krok, aby zobaczyć podgląd lokalizacji.
+            <span class="d-none d-md-inline">Najedź myszką na przycisk "Podgląd", aby zobaczyć zdjęcie lokalizacji.</span>
         </p>
 
         <nav aria-label="Lista kroków nawigacji">
@@ -34,6 +34,12 @@
                 {
                     var step = Model[i];
                     bool isLast = i == Model.Count - 1;
+                    string imageUrl = !string.IsNullOrEmpty(step.ImageFileName) 
+                        ? $"/images/{step.ImageFileName}" 
+                        : "/images/default.jpg";
+                    string altText = !string.IsNullOrEmpty(step.ImageAltText) 
+                        ? step.ImageAltText 
+                        : $"Zdjęcie: {step.LocationName}";
                     
                     <li class="list-group-item d-flex justify-content-between align-items-start p-3">
                         <div class="ms-2 me-auto">
@@ -48,11 +54,26 @@
                                 </span>
                             }
                         </div>
-                        <a href="/Explore?id=@step.TargetLocationId" 
-                           class="btn btn-outline-primary btn-sm"
-                           aria-label="Zobacz podgląd lokalizacji: krok @(i + 1) - @step.Instruction">
-                            <i class="bi bi-eye" aria-hidden="true"></i> Podgląd
-                        </a>
+                        
+                        <!-- Przycisk z podglądem zdjęcia na hover -->
+                        <div class="preview-container position-relative">
+                            <a href="/Explore?id=@step.TargetLocationId" 
+                               class="btn btn-outline-primary btn-sm preview-btn"
+                               aria-label="Zobacz podgląd lokalizacji: @step.LocationName"
+                               data-image="@imageUrl"
+                               data-alt="@altText"
+                               data-name="@step.LocationName">
+                                <i class="bi bi-eye" aria-hidden="true"></i> Podgląd
+                            </a>
+                            
+                            <!-- Dymek z podglądem (ukryty domyślnie) -->
+                            <div class="preview-tooltip" aria-hidden="true">
+                                <div class="preview-tooltip-content">
+                                    <img src="@imageUrl" alt="@altText" class="preview-image" />
+                                    <div class="preview-caption">@step.LocationName</div>
+                                </div>
+                            </div>
+                        </div>
                     </li>
                 }
             </ol>
@@ -70,3 +91,97 @@
         </div>
     }
 </div>
+
+<style>
+    /* Kontener dla przycisku i tooltipa */
+    .preview-container {
+        position: relative;
+        display: inline-block;
+    }
+    
+    /* Tooltip ze zdjęciem */
+    .preview-tooltip {
+        position: absolute;
+        bottom: 100%;
+        right: 0;
+        margin-bottom: 10px;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+        z-index: 1000;
+        pointer-events: none;
+    }
+    
+    /* Zawartość tooltipa */
+    .preview-tooltip-content {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+        padding: 8px;
+        min-width: 200px;
+        max-width: 300px;
+    }
+    
+    /* Zdjęcie w tooltipie */
+    .preview-image {
+        width: 100%;
+        height: auto;
+        max-height: 180px;
+        object-fit: cover;
+        border-radius: 4px;
+        display: block;
+    }
+    
+    /* Podpis pod zdjęciem */
+    .preview-caption {
+        font-size: 0.85rem;
+        color: #333;
+        text-align: center;
+        padding: 6px 4px 2px;
+        font-weight: 500;
+    }
+    
+    /* Strzałka tooltipa */
+    .preview-tooltip-content::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        right: 20px;
+        border-width: 8px;
+        border-style: solid;
+        border-color: white transparent transparent transparent;
+    }
+    
+    /* Pokazanie tooltipa przy hover */
+    .preview-container:hover .preview-tooltip,
+    .preview-btn:focus + .preview-tooltip {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    /* Podświetlenie przycisku przy hover */
+    .preview-btn:hover {
+        background-color: #0d6efd;
+        color: white;
+    }
+
+    /* Responsywność - na małych ekranach tooltip po lewej */
+    @@media (max-width: 576px) {
+        .preview-tooltip {
+            right: auto;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .preview-tooltip-content::after {
+            right: auto;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .preview-tooltip-content {
+            min-width: 180px;
+            max-width: 250px;
+        }
+    }
+</style>

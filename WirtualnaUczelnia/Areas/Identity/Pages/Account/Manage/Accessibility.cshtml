@@ -1,0 +1,65 @@
+@page
+@model WirtualnaUczelnia.Areas.Identity.Pages.Account.Manage.AccessibilityModel
+@{
+    ViewData["Title"] = "Ustawienia dostêpnoœci";
+    ViewData["ActivePage"] = "Accessibility";
+}
+
+<h3 tabindex="0">@ViewData["Title"]</h3>
+
+<partial name="_StatusMessage" for="StatusMessage" />
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-universal-access" aria-hidden="true"></i> Preferencje nawigacji
+                </h4>
+            </div>
+            <div class="card-body">
+                <form id="accessibility-form" method="post">
+                    <div class="form-check mb-4 p-3 bg-light border rounded">
+                        <input class="form-check-input" type="checkbox" asp-for="Input.IsDisabled" 
+                               id="isDisabledCheck" style="transform: scale(1.5);" />
+                        <label class="form-check-label ms-2 fw-bold" for="isDisabledCheck">
+                            <i class="bi bi-person-wheelchair text-primary fs-4" aria-hidden="true"></i>
+                            Poruszam siê na wózku inwalidzkim
+                        </label>
+                        <div class="form-text mt-2">
+                            <strong>Co to zmienia?</strong>
+                            <ul class="mt-2 mb-0">
+                                <li>System bêdzie wybiera³ <strong>tylko trasy z wind¹</strong></li>
+                                <li>Schody bêd¹ <strong>ca³kowicie pomijane</strong></li>
+                                <li>Trasy mog¹ byæ d³u¿sze, ale zawsze dostêpne</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+                        <strong>Aktualne ustawienie:</strong>
+                        @if (Model.Input.IsDisabled)
+                        {
+                            <span class="badge bg-primary ms-2">
+                                <i class="bi bi-person-wheelchair" aria-hidden="true"></i> Tryb wózka w³¹czony
+                            </span>
+                            <p class="mb-0 mt-2">Nawigacja omija schody i wybiera trasy dostêpne dla wózków.</p>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary ms-2">
+                                <i class="bi bi-person-walking" aria-hidden="true"></i> Tryb standardowy
+                            </span>
+                            <p class="mb-0 mt-2">Nawigacja mo¿e zawieraæ schody jako szybsz¹ opcjê.</p>
+                        }
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="bi bi-check-lg" aria-hidden="true"></i> Zapisz ustawienia
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

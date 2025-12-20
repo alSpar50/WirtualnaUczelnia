@@ -9,17 +9,19 @@ namespace WirtualnaUczelnia.Services
         public string Instruction { get; set; }
         public string Icon { get; set; }
         public int TargetLocationId { get; set; }
-        public string? LocationType { get; set; }  // Typ docelowej lokacji
-        public int? Floor { get; set; }            // Piętro docelowe
+        public string? LocationType { get; set; }
+        public int? Floor { get; set; }
+        public string? ImageFileName { get; set; }      // NOWE: nazwa pliku zdjęcia
+        public string? ImageAltText { get; set; }       // NOWE: tekst alternatywny
+        public string? LocationName { get; set; }       // NOWE: nazwa lokacji
     }
 
     public class PathFinderService
     {
         private readonly ApplicationDbContext _context;
 
-        // Mnożnik kosztu dla schodów gdy użytkownik potrzebuje dostępności
-        // (wysoka wartość sprawia, że schody są bardzo nieopłacalne)
-        private const int STAIRS_PENALTY_FOR_DISABLED = 10000;
+        // Kara dla windy gdy użytkownik jest pełnosprawny (schody są szybsze)
+        private const int ELEVATOR_PENALTY_FOR_ABLED = 15;
 
         public PathFinderService(ApplicationDbContext context)
         {
@@ -27,25 +29,26 @@ namespace WirtualnaUczelnia.Services
         }
 
         /// <summary>
-        /// Znajduje najkrótszą ścieżkę używając algorytmu Dijkstry z wagami (kosztami przejść).
-        /// Dla osób niepełnosprawnych schody mają bardzo wysoki koszt (praktycznie niedostępne).
+        /// Znajduje najkrótszą ścieżkę używając algorytmu Dijkstry.
+        /// - Dla osób na wózku: przejścia niedostępne są CAŁKOWICIE WYKLUCZONE
+        /// - Dla osób pełnosprawnych: winda ma karę (schody preferowane)
         /// </summary>
         public async Task<List<NavigationStep>> FindPathAsync(int startId, int endId, string userId)
         {
             // 1. Sprawdź preferencje użytkownika
-            bool avoidStairs = false;
+            bool requireWheelchairAccess = false;
 
             if (!string.IsNullOrEmpty(userId))
             {
                 var pref = await _context.UserPreferences.FirstOrDefaultAsync(p => p.UserId == userId);
                 if (pref != null && pref.IsDisabled)
                 {
-                    avoidStairs = true;
+                    requireWheelchairAccess = true;
                 }
             }
 
             // 2. Pobierz wszystkie widoczne przejścia
-            var allTransitions = await _context.Transitions
+            var query = _context.Transitions
                 .Include(t => t.TargetLocation)
                     .ThenInclude(l => l.Building)
                 .Include(t => t.SourceLocation)
@@ -54,10 +57,17 @@ namespace WirtualnaUczelnia.Services
                 .Where(t => !t.SourceLocation.IsHidden)
                 .Where(t => !t.TargetLocation.IsHidden)
                 .Where(t => t.SourceLocation.Building == null || !t.SourceLocation.Building.IsHidden)
-                .Where(t => t.TargetLocation.Building == null || !t.TargetLocation.Building.IsHidden)
-                .ToListAsync();
+                .Where(t => t.TargetLocation.Building == null || !t.TargetLocation.Building.IsHidden);
 
-            // 3. Budujemy graf jako słownik: SourceId -> Lista (TargetId, Transition, EffectiveCost)
+            // Dla osób na wózku - CAŁKOWICIE WYKLUCZ przejścia niedostępne
+            if (requireWheelchairAccess)
+            {
+                query = query.Where(t => t.IsWheelchairAccessible);
+            }
+
+            var allTransitions = await query.ToListAsync();
+
+            // 3. Budujemy graf: SourceId -> Lista (TargetId, Transition, Cost)
             var graph = new Dictionary<int, List<(int targetId, Transition transition, int cost)>>();
             
             foreach (var t in allTransitions)
@@ -65,13 +75,22 @@ namespace WirtualnaUczelnia.Services
                 if (!graph.ContainsKey(t.SourceLocationId))
                     graph[t.SourceLocationId] = new List<(int, Transition, int)>();
 
-                // Oblicz efektywny koszt
-                int effectiveCost = t.Cost;
+                int effectiveCost = t.Cost > 0 ? t.Cost : 10; // Domyślny koszt 10 jeśli nie ustawiono
                 
-                // Jeśli użytkownik unika schodów, a przejście nie jest dostępne dla wózków
-                if (avoidStairs && !t.IsWheelchairAccessible)
+                // Dla osób PEŁNOSPRAWNYCH - dodaj karę dla windy (schody są szybsze)
+                if (!requireWheelchairAccess)
                 {
-                    effectiveCost += STAIRS_PENALTY_FOR_DISABLED; // Ogromna kara - schody będą ostatecznością
+                    // Jeśli przejście prowadzi do windy - dodaj karę
+                    if (t.TargetLocation.Type == LocationType.Elevator)
+                    {
+                        effectiveCost += ELEVATOR_PENALTY_FOR_ABLED;
+                    }
+                    
+                    // Jeśli przejście to schody (niedostępne dla wózków) - daj bonus
+                    if (!t.IsWheelchairAccessible)
+                    {
+                        effectiveCost = Math.Max(1, effectiveCost - 5);
+                    }
                 }
 
                 graph[t.SourceLocationId].Add((t.TargetLocationId, t, effectiveCost));
@@ -81,8 +100,6 @@ namespace WirtualnaUczelnia.Services
             var distances = new Dictionary<int, int>();
             var cameFrom = new Dictionary<int, Transition>();
             var visited = new HashSet<int>();
-
-            // PriorityQueue: (koszt, locationId) - sortuje od najmniejszego kosztu
             var priorityQueue = new PriorityQueue<int, int>();
 
             distances[startId] = 0;
@@ -123,7 +140,7 @@ namespace WirtualnaUczelnia.Services
                 }
             }
 
-            // 5. Budowanie wyniku (odtworzenie ścieżki)
+            // 5. Budowanie wyniku
             var path = new List<NavigationStep>();
             
             if (distances.ContainsKey(endId))
@@ -138,7 +155,10 @@ namespace WirtualnaUczelnia.Services
                         Icon = GetDirectionIcon(trans.Direction),
                         TargetLocationId = trans.TargetLocationId,
                         LocationType = trans.TargetLocation.Type.ToString(),
-                        Floor = trans.TargetLocation.Floor
+                        Floor = trans.TargetLocation.Floor,
+                        ImageFileName = trans.TargetLocation.ImageFileName,
+                        ImageAltText = trans.TargetLocation.ImageAltText,
+                        LocationName = trans.TargetLocation.Name
                     });
                     curr = trans.SourceLocationId;
                 }
