@@ -41,6 +41,16 @@ builder.Services.AddRazorPages();
 
 builder.Services.AddScoped<WirtualnaUczelnia.Services.PathFinderService>();
 
+// Konfiguracja sesji (dla trybu windy niezalogowanych u¿ytkowników)
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.Cookie.Name = ".WirtualnaUczelnia.Session";
+});
+
 var app = builder.Build();
 
 // Seedowanie z obs³ug¹ b³êdów
@@ -59,9 +69,6 @@ if (app.Environment.IsDevelopment())
 {
     app.UseMigrationsEndPoint();
     app.UseDeveloperExceptionPage();
-    
-    // NIE u¿ywaj Browser Link - mo¿e powodowaæ crashe w VS 2026
-    // app.UseBrowserLink(); // WY£¥CZONE
 }
 else
 {
@@ -76,6 +83,9 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// W³¹cz sesjê (musi byæ po UseRouting, przed MapControllerRoute)
+app.UseSession();
 
 app.MapControllerRoute(
     name: "default",

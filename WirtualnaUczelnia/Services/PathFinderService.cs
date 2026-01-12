@@ -30,12 +30,11 @@ namespace WirtualnaUczelnia.Services
 
         /// <summary>
         /// Znajduje najkrótszą ścieżkę używając algorytmu Dijkstry.
-        /// - Dla osób na wózku: przejścia niedostępne są CAŁKOWICIE WYKLUCZONE
-        /// - Dla osób pełnosprawnych: winda ma karę (schody preferowane)
+        /// Wersja dla zalogowanych użytkowników - pobiera preferencje z bazy.
         /// </summary>
-        public async Task<List<NavigationStep>> FindPathAsync(int startId, int endId, string userId)
+        public async Task<List<NavigationStep>> FindPathAsync(int startId, int endId, string? userId)
         {
-            // 1. Sprawdź preferencje użytkownika
+            // Sprawdź preferencje użytkownika z bazy
             bool requireWheelchairAccess = false;
 
             if (!string.IsNullOrEmpty(userId))
@@ -47,7 +46,18 @@ namespace WirtualnaUczelnia.Services
                 }
             }
 
-            // 2. Pobierz wszystkie widoczne przejścia
+            return await FindPathAsync(startId, endId, requireWheelchairAccess);
+        }
+
+        /// <summary>
+        /// Znajduje najkrótszą ścieżkę używając algorytmu Dijkstry.
+        /// Wersja z bezpośrednim parametrem dostępności - dla niezalogowanych użytkowników.
+        /// - Dla osób na wózku: przejścia niedostępne są CAŁKOWICIE WYKLUCZONE
+        /// - Dla osób pełnosprawnych: winda ma karę (schody preferowane)
+        /// </summary>
+        public async Task<List<NavigationStep>> FindPathAsync(int startId, int endId, bool requireWheelchairAccess)
+        {
+            // 1. Pobierz wszystkie widoczne przejścia
             var query = _context.Transitions
                 .Include(t => t.TargetLocation)
                     .ThenInclude(l => l.Building)
@@ -67,7 +77,7 @@ namespace WirtualnaUczelnia.Services
 
             var allTransitions = await query.ToListAsync();
 
-            // 3. Budujemy graf: SourceId -> Lista (TargetId, Transition, Cost)
+            // 2. Budujemy graf: SourceId -> Lista (TargetId, Transition, Cost)
             var graph = new Dictionary<int, List<(int targetId, Transition transition, int cost)>>();
             
             foreach (var t in allTransitions)
@@ -96,7 +106,7 @@ namespace WirtualnaUczelnia.Services
                 graph[t.SourceLocationId].Add((t.TargetLocationId, t, effectiveCost));
             }
 
-            // 4. Algorytm Dijkstry
+            // 3. Algorytm Dijkstry
             var distances = new Dictionary<int, int>();
             var cameFrom = new Dictionary<int, Transition>();
             var visited = new HashSet<int>();
@@ -140,7 +150,7 @@ namespace WirtualnaUczelnia.Services
                 }
             }
 
-            // 5. Budowanie wyniku
+            // 4. Budowanie wyniku
             var path = new List<NavigationStep>();
             
             if (distances.ContainsKey(endId))

@@ -12,6 +12,9 @@ namespace WirtualnaUczelnia.Controllers
         private readonly ApplicationDbContext _context;
         private readonly PathFinderService _pathFinder;
 
+        // Klucz sesji dla trybu windy (dla niezalogowanych)
+        private const string WheelchairModeSessionKey = "WheelchairMode";
+
         public NavigationController(ApplicationDbContext context, PathFinderService pathFinder)
         {
             _context = context;
@@ -22,14 +25,22 @@ namespace WirtualnaUczelnia.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             bool isDisabled = false;
+            bool isLoggedIn = userId != null;
 
-            if (userId != null)
+            if (isLoggedIn)
             {
+                // Zalogowany użytkownik - pobierz preferencje z bazy
                 var pref = await _context.UserPreferences.FirstOrDefaultAsync(p => p.UserId == userId);
                 if (pref != null) isDisabled = pref.IsDisabled;
             }
+            else
+            {
+                // Niezalogowany użytkownik - pobierz z sesji
+                isDisabled = HttpContext.Session.GetString(WheelchairModeSessionKey) == "true";
+            }
 
             ViewBag.IsDisabledUser = isDisabled;
+            ViewBag.IsLoggedIn = isLoggedIn;
 
             // Pokazuj tylko widoczne lokacje (nie ukryte i nie w ukrytych budynkach)
             var visibleLocations = await _context.Locations
@@ -45,7 +56,7 @@ namespace WirtualnaUczelnia.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> FindRoute(int startId, int endId)
+        public async Task<IActionResult> FindRoute(int startId, int endId, bool wheelchairMode = false)
         {
             // Walidacja: start i koniec nie mogą być takie same
             if (startId == endId)
@@ -75,11 +86,29 @@ namespace WirtualnaUczelnia.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // Określ tryb dostępności
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var path = await _pathFinder.FindPathAsync(startId, endId, userId);
+            bool requireWheelchairAccess;
+
+            if (userId != null)
+            {
+                // Zalogowany użytkownik - pobierz preferencje z bazy
+                var pref = await _context.UserPreferences.FirstOrDefaultAsync(p => p.UserId == userId);
+                requireWheelchairAccess = pref?.IsDisabled ?? false;
+            }
+            else
+            {
+                // Niezalogowany użytkownik - użyj wartości z formularza i zapisz w sesji
+                requireWheelchairAccess = wheelchairMode;
+                HttpContext.Session.SetString(WheelchairModeSessionKey, wheelchairMode ? "true" : "false");
+            }
+
+            // Znajdź trasę
+            var path = await _pathFinder.FindPathAsync(startId, endId, requireWheelchairAccess);
 
             ViewBag.StartName = startLoc?.Name;
             ViewBag.EndName = endLoc?.Name;
+            ViewBag.WheelchairMode = requireWheelchairAccess;
 
             return View("Result", path);
         }
