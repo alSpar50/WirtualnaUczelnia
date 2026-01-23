@@ -12,11 +12,8 @@ namespace WirtualnaUczelnia.Tools
     /// </summary>
     public static class DataMigrationTool
     {
-        private const string ExportFolder = "DataExport";
-
         /// <summary>
         /// Eksportuje wszystkie dane z bazy do plików JSON.
-        /// Wywo³aj rêcznie przez endpoint lub konsolê.
         /// </summary>
         public static async Task ExportDataAsync(ApplicationDbContext context, string exportPath)
         {
@@ -33,51 +30,42 @@ namespace WirtualnaUczelnia.Tools
             await File.WriteAllTextAsync(
                 Path.Combine(exportPath, "buildings.json"),
                 JsonSerializer.Serialize(buildings, options));
-            Console.WriteLine($"Wyeksportowano {buildings.Count} budynków");
 
             // Eksport Locations
             var locations = await context.Locations.AsNoTracking().ToListAsync();
             await File.WriteAllTextAsync(
                 Path.Combine(exportPath, "locations.json"),
                 JsonSerializer.Serialize(locations, options));
-            Console.WriteLine($"Wyeksportowano {locations.Count} lokacji");
 
             // Eksport Transitions
             var transitions = await context.Transitions.AsNoTracking().ToListAsync();
             await File.WriteAllTextAsync(
                 Path.Combine(exportPath, "transitions.json"),
                 JsonSerializer.Serialize(transitions, options));
-            Console.WriteLine($"Wyeksportowano {transitions.Count} przejœæ");
 
             // Eksport UserPreferences
             var userPrefs = await context.UserPreferences.AsNoTracking().ToListAsync();
             await File.WriteAllTextAsync(
                 Path.Combine(exportPath, "userpreferences.json"),
                 JsonSerializer.Serialize(userPrefs, options));
-            Console.WriteLine($"Wyeksportowano {userPrefs.Count} preferencji u¿ytkowników");
 
             // Eksport Identity Users
             var users = await context.Users.AsNoTracking().ToListAsync();
             await File.WriteAllTextAsync(
                 Path.Combine(exportPath, "users.json"),
                 JsonSerializer.Serialize(users, options));
-            Console.WriteLine($"Wyeksportowano {users.Count} u¿ytkowników");
 
             // Eksport Identity Roles
             var roles = await context.Roles.AsNoTracking().ToListAsync();
             await File.WriteAllTextAsync(
                 Path.Combine(exportPath, "roles.json"),
                 JsonSerializer.Serialize(roles, options));
-            Console.WriteLine($"Wyeksportowano {roles.Count} ról");
 
             // Eksport Identity UserRoles
             var userRoles = await context.UserRoles.AsNoTracking().ToListAsync();
             await File.WriteAllTextAsync(
                 Path.Combine(exportPath, "userroles.json"),
                 JsonSerializer.Serialize(userRoles, options));
-            Console.WriteLine($"Wyeksportowano {userRoles.Count} przypisañ ról");
-
-            Console.WriteLine($"\nDane wyeksportowane do folderu: {exportPath}");
         }
 
         /// <summary>
@@ -90,157 +78,139 @@ namespace WirtualnaUczelnia.Tools
                 PropertyNameCaseInsensitive = true
             };
 
-            // SprawdŸ czy folder istnieje
             if (!Directory.Exists(importPath))
             {
-                Console.WriteLine($"Folder {importPath} nie istnieje!");
-                return;
+                throw new DirectoryNotFoundException($"Folder {importPath} nie istnieje!");
             }
 
-            // Import Roles (najpierw role, bo u¿ytkownicy mog¹ je potrzebowaæ)
-            var rolesFile = Path.Combine(importPath, "roles.json");
-            if (File.Exists(rolesFile))
+            // WA¯NE: Wy³¹cz sprawdzanie kluczy obcych na czas importu
+            await context.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = OFF;");
+
+            try
             {
-                var rolesJson = await File.ReadAllTextAsync(rolesFile);
-                var roles = JsonSerializer.Deserialize<List<IdentityRole>>(rolesJson, options);
-                if (roles != null && roles.Any())
+                // Czyœcimy wszystkie tabele w odpowiedniej kolejnoœci
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM Transitions;");
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM Locations;");
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM Buildings;");
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM UserPreferences;");
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM AspNetUserRoles;");
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM AspNetUserClaims;");
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM AspNetUserLogins;");
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM AspNetUserTokens;");
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM AspNetUsers;");
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM AspNetRoleClaims;");
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM AspNetRoles;");
+
+                // Import Roles
+                var rolesFile = Path.Combine(importPath, "roles.json");
+                if (File.Exists(rolesFile))
                 {
-                    foreach (var role in roles)
+                    var rolesJson = await File.ReadAllTextAsync(rolesFile);
+                    var roles = JsonSerializer.Deserialize<List<IdentityRole>>(rolesJson, options);
+                    if (roles != null && roles.Any())
                     {
-                        if (!await context.Roles.AnyAsync(r => r.Id == role.Id))
+                        context.Roles.AddRange(roles);
+                        await context.SaveChangesAsync();
+                    }
+                }
+
+                // Import Users
+                var usersFile = Path.Combine(importPath, "users.json");
+                if (File.Exists(usersFile))
+                {
+                    var usersJson = await File.ReadAllTextAsync(usersFile);
+                    var users = JsonSerializer.Deserialize<List<IdentityUser>>(usersJson, options);
+                    if (users != null && users.Any())
+                    {
+                        context.Users.AddRange(users);
+                        await context.SaveChangesAsync();
+                    }
+                }
+
+                // Import UserRoles
+                var userRolesFile = Path.Combine(importPath, "userroles.json");
+                if (File.Exists(userRolesFile))
+                {
+                    var userRolesJson = await File.ReadAllTextAsync(userRolesFile);
+                    var userRoles = JsonSerializer.Deserialize<List<IdentityUserRole<string>>>(userRolesJson, options);
+                    if (userRoles != null && userRoles.Any())
+                    {
+                        context.UserRoles.AddRange(userRoles);
+                        await context.SaveChangesAsync();
+                    }
+                }
+
+                // Import Buildings
+                var buildingsFile = Path.Combine(importPath, "buildings.json");
+                if (File.Exists(buildingsFile))
+                {
+                    var buildingsJson = await File.ReadAllTextAsync(buildingsFile);
+                    var buildings = JsonSerializer.Deserialize<List<Building>>(buildingsJson, options);
+                    if (buildings != null && buildings.Any())
+                    {
+                        foreach (var building in buildings)
                         {
-                            context.Roles.Add(role);
+                            building.Locations = new List<Location>();
                         }
+                        context.Buildings.AddRange(buildings);
+                        await context.SaveChangesAsync();
                     }
-                    await context.SaveChangesAsync();
-                    Console.WriteLine($"Zaimportowano {roles.Count} ról");
                 }
-            }
 
-            // Import Users
-            var usersFile = Path.Combine(importPath, "users.json");
-            if (File.Exists(usersFile))
-            {
-                var usersJson = await File.ReadAllTextAsync(usersFile);
-                var users = JsonSerializer.Deserialize<List<IdentityUser>>(usersJson, options);
-                if (users != null && users.Any())
+                // Import Locations
+                var locationsFile = Path.Combine(importPath, "locations.json");
+                if (File.Exists(locationsFile))
                 {
-                    foreach (var user in users)
+                    var locationsJson = await File.ReadAllTextAsync(locationsFile);
+                    var locations = JsonSerializer.Deserialize<List<Location>>(locationsJson, options);
+                    if (locations != null && locations.Any())
                     {
-                        if (!await context.Users.AnyAsync(u => u.Id == user.Id))
+                        foreach (var location in locations)
                         {
-                            context.Users.Add(user);
+                            location.Building = null;
+                            location.Transitions = new List<Transition>();
                         }
+                        context.Locations.AddRange(locations);
+                        await context.SaveChangesAsync();
                     }
-                    await context.SaveChangesAsync();
-                    Console.WriteLine($"Zaimportowano {users.Count} u¿ytkowników");
                 }
-            }
 
-            // Import UserRoles
-            var userRolesFile = Path.Combine(importPath, "userroles.json");
-            if (File.Exists(userRolesFile))
-            {
-                var userRolesJson = await File.ReadAllTextAsync(userRolesFile);
-                var userRoles = JsonSerializer.Deserialize<List<IdentityUserRole<string>>>(userRolesJson, options);
-                if (userRoles != null && userRoles.Any())
+                // Import Transitions
+                var transitionsFile = Path.Combine(importPath, "transitions.json");
+                if (File.Exists(transitionsFile))
                 {
-                    foreach (var ur in userRoles)
+                    var transitionsJson = await File.ReadAllTextAsync(transitionsFile);
+                    var transitions = JsonSerializer.Deserialize<List<Transition>>(transitionsJson, options);
+                    if (transitions != null && transitions.Any())
                     {
-                        if (!await context.UserRoles.AnyAsync(x => x.UserId == ur.UserId && x.RoleId == ur.RoleId))
+                        foreach (var transition in transitions)
                         {
-                            context.UserRoles.Add(ur);
+                            transition.SourceLocation = null!;
+                            transition.TargetLocation = null!;
                         }
+                        context.Transitions.AddRange(transitions);
+                        await context.SaveChangesAsync();
                     }
-                    await context.SaveChangesAsync();
-                    Console.WriteLine($"Zaimportowano {userRoles.Count} przypisañ ról");
                 }
-            }
 
-            // Import Buildings (najpierw budynki, bo lokacje siê do nich odwo³uj¹)
-            var buildingsFile = Path.Combine(importPath, "buildings.json");
-            if (File.Exists(buildingsFile))
-            {
-                var buildingsJson = await File.ReadAllTextAsync(buildingsFile);
-                var buildings = JsonSerializer.Deserialize<List<Building>>(buildingsJson, options);
-                if (buildings != null && buildings.Any())
+                // Import UserPreferences
+                var userPrefsFile = Path.Combine(importPath, "userpreferences.json");
+                if (File.Exists(userPrefsFile))
                 {
-                    // W³¹cz IDENTITY_INSERT dla SQLite nie jest potrzebne
-                    // Ale musimy upewniæ siê, ¿e ID s¹ zachowane
-                    context.Database.ExecuteSqlRaw("DELETE FROM Buildings");
-                    
-                    foreach (var building in buildings)
+                    var userPrefsJson = await File.ReadAllTextAsync(userPrefsFile);
+                    var userPrefs = JsonSerializer.Deserialize<List<UserPreference>>(userPrefsJson, options);
+                    if (userPrefs != null && userPrefs.Any())
                     {
-                        building.Locations = new List<Location>(); // Wyczyœæ nawigacjê
-                        context.Buildings.Add(building);
+                        context.UserPreferences.AddRange(userPrefs);
+                        await context.SaveChangesAsync();
                     }
-                    await context.SaveChangesAsync();
-                    Console.WriteLine($"Zaimportowano {buildings.Count} budynków");
                 }
             }
-
-            // Import Locations
-            var locationsFile = Path.Combine(importPath, "locations.json");
-            if (File.Exists(locationsFile))
+            finally
             {
-                var locationsJson = await File.ReadAllTextAsync(locationsFile);
-                var locations = JsonSerializer.Deserialize<List<Location>>(locationsJson, options);
-                if (locations != null && locations.Any())
-                {
-                    context.Database.ExecuteSqlRaw("DELETE FROM Locations");
-                    
-                    foreach (var location in locations)
-                    {
-                        location.Building = null; // Wyczyœæ nawigacjê
-                        location.Transitions = new List<Transition>();
-                        context.Locations.Add(location);
-                    }
-                    await context.SaveChangesAsync();
-                    Console.WriteLine($"Zaimportowano {locations.Count} lokacji");
-                }
+                // W³¹cz z powrotem sprawdzanie kluczy obcych
+                await context.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = ON;");
             }
-
-            // Import Transitions
-            var transitionsFile = Path.Combine(importPath, "transitions.json");
-            if (File.Exists(transitionsFile))
-            {
-                var transitionsJson = await File.ReadAllTextAsync(transitionsFile);
-                var transitions = JsonSerializer.Deserialize<List<Transition>>(transitionsJson, options);
-                if (transitions != null && transitions.Any())
-                {
-                    context.Database.ExecuteSqlRaw("DELETE FROM Transitions");
-                    
-                    foreach (var transition in transitions)
-                    {
-                        transition.SourceLocation = null!; // Wyczyœæ nawigacjê
-                        transition.TargetLocation = null!;
-                        context.Transitions.Add(transition);
-                    }
-                    await context.SaveChangesAsync();
-                    Console.WriteLine($"Zaimportowano {transitions.Count} przejœæ");
-                }
-            }
-
-            // Import UserPreferences
-            var userPrefsFile = Path.Combine(importPath, "userpreferences.json");
-            if (File.Exists(userPrefsFile))
-            {
-                var userPrefsJson = await File.ReadAllTextAsync(userPrefsFile);
-                var userPrefs = JsonSerializer.Deserialize<List<UserPreference>>(userPrefsJson, options);
-                if (userPrefs != null && userPrefs.Any())
-                {
-                    context.Database.ExecuteSqlRaw("DELETE FROM UserPreferences");
-                    
-                    foreach (var pref in userPrefs)
-                    {
-                        context.UserPreferences.Add(pref);
-                    }
-                    await context.SaveChangesAsync();
-                    Console.WriteLine($"Zaimportowano {userPrefs.Count} preferencji u¿ytkowników");
-                }
-            }
-
-            Console.WriteLine("\nImport zakoñczony!");
         }
     }
 }

@@ -13,79 +13,94 @@ namespace WirtualnaUczelnia.Data
                 var context = serviceScope.ServiceProvider.GetService<ApplicationDbContext>();
                 var userManager = serviceScope.ServiceProvider.GetService<UserManager<IdentityUser>>();
                 var roleManager = serviceScope.ServiceProvider.GetService<RoleManager<IdentityRole>>();
+                var config = serviceScope.ServiceProvider.GetService<IConfiguration>();
+                var env = serviceScope.ServiceProvider.GetService<IWebHostEnvironment>();
 
-                context.Database.Migrate();
+                var useDatabase = config?.GetValue<string>("UseDatabase") ?? "Sqlite";
 
-                // 1. Tworzenie Roli Admina (jeśli nie istnieje)
-                if (!await roleManager.RoleExistsAsync("Admin"))
+                // Dla SQLite - tylko EnsureCreated (schemat), bez seedowania
+                // Dane będą importowane ręcznie przez /DataTools
+                if (useDatabase != "SqlServer")
                 {
-                    await roleManager.CreateAsync(new IdentityRole("Admin"));
-                }
-
-                // 2. Seedowanie Użytkownika Admina
-                var adminEmail = "admin@wlodkowic.pl";
-                var adminUser = await userManager.FindByEmailAsync(adminEmail);
-
-                if (adminUser == null)
-                {
-                    var newAdmin = new IdentityUser
+                    context.Database.EnsureCreated();
+                    
+                    // Sprawdź czy istnieje folder DataExport z danymi do importu
+                    var dataExportPath = Path.Combine(env.ContentRootPath, "DataExport");
+                    if (Directory.Exists(dataExportPath) && Directory.GetFiles(dataExportPath, "*.json").Any())
                     {
-                        UserName = adminEmail,
-                        Email = adminEmail,
-                        EmailConfirmed = true
-                    };
-                    await userManager.CreateAsync(newAdmin, "haslo1234PL!?");
-                    await userManager.AddToRoleAsync(newAdmin, "Admin");
-                }
-                else
-                {
-                    if (!await userManager.IsInRoleAsync(adminUser, "Admin"))
-                    {
-                        await userManager.AddToRoleAsync(adminUser, "Admin");
+                        // Są dane do importu - nie seeduj, użytkownik zaimportuje przez /DataTools
+                        // Tylko napraw ewentualne problemy z istniejącymi danymi
+                        if (context.Buildings.Any())
+                        {
+                            var transitionsWithZeroCost = await context.Transitions.Where(t => t.Cost == 0).ToListAsync();
+                            if (transitionsWithZeroCost.Any())
+                            {
+                                foreach (var transition in transitionsWithZeroCost)
+                                {
+                                    transition.Cost = 10;
+                                }
+                                await context.SaveChangesAsync();
+                            }
+                        }
+                        return;
                     }
-                }
-
-                // 3. Seedowanie Budynków
-                if (!context.Buildings.Any())
-                {
-                    var buildings = new List<Building>
+                    
+                    // Brak danych do importu i pusta baza - seeduj podstawowe dane
+                    if (!context.Buildings.Any())
                     {
-                        new Building { Symbol = "A", Name = "Bud. Rektorat (A)", Description = "Powierzchnia 3160 m². Znajduje się tu: Sala Senatu, Rektorat, Biuro Kanclerza, Dziekanat, Kwestura, Biuro Karier i laboratoria." },
-                        new Building { Symbol = "B", Name = "Budynek B", Description = "Powierzchnia 912 m². Znajduje się tu: Szkoła 'Profesor', biuro Parlamentu Studentów, PCK, Redakcja gazety Per Contra." },
-                        new Building { Symbol = "C", Name = "Budynek C", Description = "Powierzchnia 1120 m². Znajdują się tu: dwie aule, sale wykładowe, księgarnia akademicka." },
-                        new Building { Symbol = "D", Name = "Biblioteka", Description = "Powierzchnia 897 m². Znajduje się tu: biblioteka z czytelnią, wypożyczalnia oraz stanowiska komputerowe." },
-                        new Building { Symbol = "E", Name = "Wydział Pedagogiczny", Description = "Powierzchnia 1696 m². Znajduje się tu: Sekretariat Wydziału Pedagogicznego, aule, sale ćwiczeniowe i pracownia psychologiczna." },
-                        new Building { Symbol = "F", Name = "Budynek F", Description = "Powierzchnia 1680 m². Mieści szkoły 'Profesor', aulę, sale wykładowe i pracownie komputerowe." },
-                        new Building { Symbol = "G", Name = "Studium Języków Obcych", Description = "Powierzchnia 1320 m². Mieści: Studium Języków Obcych, laboratoria językowe, chór akademicki i archiwum." },
-                        new Building { Symbol = "H", Name = "Centrum Sportowo-Rekreacyjne", Description = "Powierzchnia 3356 m². Hala sportowa, siłownia, sauny, gabinet kosmetyczny. Budynek w pełni przystosowany dla niepełnosprawnych." }
-                    };
-                    context.Buildings.AddRange(buildings);
-                    context.SaveChanges();
-                }
-
-                // 4. Seedowanie Lokacji
-                if (!context.Locations.Any())
-                {
-                    var budynekA = context.Buildings.FirstOrDefault(b => b.Symbol == "A");
-
-                    if (budynekA != null)
-                    {
-                        // Tutaj możesz dodać przykładowe lokacje
+                        await SeedBasicData(context, userManager, roleManager);
                     }
-
-                    context.SaveChanges();
+                    return;
                 }
 
-                // 5. NOWE: Napraw przejścia z Cost=0 (ustaw domyślny koszt 10)
-                var transitionsWithZeroCost = await context.Transitions.Where(t => t.Cost == 0).ToListAsync();
-                if (transitionsWithZeroCost.Any())
+                // Dla SQL Server - standardowe działanie (bez zmian)
+                // Baza już istnieje - nie rób nic specjalnego
+            }
+        }
+
+        private static async Task SeedBasicData(
+            ApplicationDbContext context,
+            UserManager<IdentityUser> userManager,
+            RoleManager<IdentityRole> roleManager)
+        {
+            // 1. Tworzenie Roli Admina
+            if (!await roleManager.RoleExistsAsync("Admin"))
+            {
+                await roleManager.CreateAsync(new IdentityRole("Admin"));
+            }
+
+            // 2. Seedowanie Użytkownika Admina
+            var adminEmail = "admin@wlodkowic.pl";
+            var adminUser = await userManager.FindByEmailAsync(adminEmail);
+
+            if (adminUser == null)
+            {
+                var newAdmin = new IdentityUser
                 {
-                    foreach (var transition in transitionsWithZeroCost)
-                    {
-                        transition.Cost = 10; // Domyślny koszt
-                    }
-                    await context.SaveChangesAsync();
-                }
+                    UserName = adminEmail,
+                    Email = adminEmail,
+                    EmailConfirmed = true
+                };
+                await userManager.CreateAsync(newAdmin, "haslo1234PL!?");
+                await userManager.AddToRoleAsync(newAdmin, "Admin");
+            }
+
+            // 3. Seedowanie Budynków
+            if (!context.Buildings.Any())
+            {
+                var buildings = new List<Building>
+                {
+                    new Building { Symbol = "A", Name = "Bud. Rektorat (A)", Description = "Powierzchnia 3160 m²." },
+                    new Building { Symbol = "B", Name = "Budynek B", Description = "Powierzchnia 912 m²." },
+                    new Building { Symbol = "C", Name = "Budynek C", Description = "Powierzchnia 1120 m²." },
+                    new Building { Symbol = "D", Name = "Biblioteka", Description = "Powierzchnia 897 m²." },
+                    new Building { Symbol = "E", Name = "Wydział Pedagogiczny", Description = "Powierzchnia 1696 m²." },
+                    new Building { Symbol = "F", Name = "Budynek F", Description = "Powierzchnia 1680 m²." },
+                    new Building { Symbol = "G", Name = "Studium Języków Obcych", Description = "Powierzchnia 1320 m²." },
+                    new Building { Symbol = "H", Name = "Centrum Sportowo-Rekreacyjne", Description = "Powierzchnia 3356 m²." }
+                };
+                context.Buildings.AddRange(buildings);
+                await context.SaveChangesAsync();
             }
         }
     }

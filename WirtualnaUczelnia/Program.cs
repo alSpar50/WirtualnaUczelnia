@@ -24,23 +24,18 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(1);
 });
 
-// Wybór bazy danych na podstawie konfiguracji
+// Konfiguracja bazy danych - wybór na podstawie UseDatabase
 var useDatabase = builder.Configuration.GetValue<string>("UseDatabase") ?? "Sqlite";
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 if (useDatabase == "SqlServer")
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlServer(connectionString));
 }
 else
 {
-    var connectionString = builder.Configuration.GetConnectionString("SqliteConnection")
-        ?? builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("Connection string not found.");
-
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlite(connectionString));
 }
@@ -67,13 +62,6 @@ builder.Services.AddSession(options =>
 });
 
 var app = builder.Build();
-
-// Automatyczne tworzenie/migracja bazy danych
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    context.Database.EnsureCreated();
-}
 
 // Seedowanie z obs³ug¹ b³êdów
 try
