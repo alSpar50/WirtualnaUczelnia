@@ -266,6 +266,13 @@ ServiceFabricBackup/
 *.ldf
 *.ndf
 
+# ===== WA¯NE: BAZA DANYCH SQLite =====
+# Pliki tymczasowe SQLite - ignoruj
+*.db-shm
+*.db-wal
+*.db-journal
+# NIE ignoruj samego pliku *.db - chcemy go w repozytorium!
+
 # Business Intelligence projects
 *.rdl.data
 *.bim.layout
