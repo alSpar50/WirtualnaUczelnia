@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Folder tymczasowy do eksportu danych (nie commitowaæ)
+DataExport/

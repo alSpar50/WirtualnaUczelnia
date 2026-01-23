@@ -1,0 +1,52 @@
+@{
+    ViewData["Title"] = "Narzêdzia do migracji danych";
+}
+
+<h1>Narzêdzia do migracji danych</h1>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Message"]
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Eksport danych</h5>
+            </div>
+            <div class="card-body">
+                <p>Eksportuje wszystkie dane (budynki, lokacje, przejœcia, u¿ytkownicy, role) do plików JSON w folderze <code>DataExport</code>.</p>
+                <form asp-action="Export" method="post">
+                    <button type="submit" class="btn btn-primary">Eksportuj dane</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Import danych</h5>
+            </div>
+            <div class="card-body">
+                <p>Importuje dane z plików JSON z folderu <code>DataExport</code> do bie¿¹cej bazy danych.</p>
+                <form asp-action="Import" method="post">
+                    <button type="submit" class="btn btn-warning">Importuj dane</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<hr />
+
+<h3>Instrukcja migracji z SQL Server na SQLite:</h3>
+<ol>
+    <li>Najpierw kliknij <strong>Eksportuj dane</strong> (gdy baza jest jeszcze SQL Server)</li>
+    <li>Zmieñ connection string w <code>appsettings.json</code> na SQLite</li>
+    <li>Uruchom aplikacjê ponownie (baza SQLite zostanie utworzona automatycznie)</li>
+    <li>Kliknij <strong>Importuj dane</strong></li>
+    <li>Gotowe! Plik <code>WirtualnaUczelnia.db</code> mo¿esz dodaæ do repozytorium Git</li>
+</ol>

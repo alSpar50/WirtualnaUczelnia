@@ -24,11 +24,26 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(1);
 });
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+// Wybór bazy danych na podstawie konfiguracji
+var useDatabase = builder.Configuration.GetValue<string>("UseDatabase") ?? "Sqlite";
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+if (useDatabase == "SqlServer")
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseSqlServer(connectionString));
+}
+else
+{
+    var connectionString = builder.Configuration.GetConnectionString("SqliteConnection")
+        ?? builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Connection string not found.");
+
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseSqlite(connectionString));
+}
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -52,6 +67,13 @@ builder.Services.AddSession(options =>
 });
 
 var app = builder.Build();
+
+// Automatyczne tworzenie/migracja bazy danych
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    context.Database.EnsureCreated();
+}
 
 // Seedowanie z obs³ug¹ b³êdów
 try
