@@ -42,6 +42,7 @@ namespace WirtualnaUczelnia.Controllers
             // Serializujemy to do JSON, ¿eby JS móg³ to ³atwo odczytaæ
             var imageMap = locations.ToDictionary(k => k.Id.ToString(), v => v.ImageFileName);
             ViewBag.ImageMap = System.Text.Json.JsonSerializer.Serialize(imageMap);
+            ViewBag.ImageMapDict = imageMap; // S³ownik dla Razor
 
             return View();
         }
@@ -73,6 +74,7 @@ namespace WirtualnaUczelnia.Controllers
 
             var imageMap = locations.ToDictionary(k => k.Id.ToString(), v => v.ImageFileName);
             ViewBag.ImageMap = System.Text.Json.JsonSerializer.Serialize(imageMap);
+            ViewBag.ImageMapDict = imageMap; // S³ownik dla Razor
 
             return View(transition);
         }
@@ -91,6 +93,7 @@ namespace WirtualnaUczelnia.Controllers
 
             var imageMap = locations.ToDictionary(k => k.Id.ToString(), v => v.ImageFileName);
             ViewBag.ImageMap = System.Text.Json.JsonSerializer.Serialize(imageMap);
+            ViewBag.ImageMapDict = imageMap; // S³ownik dla Razor
 
             return View(transition);
         }
@@ -131,6 +134,7 @@ namespace WirtualnaUczelnia.Controllers
 
             var imageMap = locations.ToDictionary(k => k.Id.ToString(), v => v.ImageFileName);
             ViewBag.ImageMap = System.Text.Json.JsonSerializer.Serialize(imageMap);
+            ViewBag.ImageMapDict = imageMap; // S³ownik dla Razor
 
             return View(transition);
         }

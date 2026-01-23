@@ -4,8 +4,75 @@
     ViewData["Title"] = "Edytuj przejœcie";
 }
 
+<!-- Style dla custom dropdown z podgl¹dem -->
+<style>
+    .custom-dropdown {
+        position: relative;
+    }
+    .custom-dropdown-toggle {
+        width: 100%;
+        text-align: left;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .custom-dropdown-menu {
+        max-height: 300px;
+        overflow-y: auto;
+        width: 100%;
+    }
+    .custom-dropdown-item {
+        cursor: pointer;
+        padding: 8px 12px;
+        transition: background-color 0.15s;
+    }
+    .custom-dropdown-item:hover {
+        background-color: #e9ecef;
+    }
+    .custom-dropdown-item.selected {
+        background-color: #0d6efd;
+        color: white;
+    }
+    
+    /* Tooltip z podgl¹dem obrazka */
+    .hover-preview {
+        position: fixed;
+        z-index: 9999;
+        pointer-events: none;
+        background: white;
+        border: 3px solid #0d6efd;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        padding: 5px;
+        display: none;
+        max-width: 320px;
+    }
+    .hover-preview img {
+        width: 300px;
+        height: 170px;
+        object-fit: cover;
+        border-radius: 4px;
+    }
+    .hover-preview .preview-label {
+        text-align: center;
+        font-weight: bold;
+        font-size: 12px;
+        margin-top: 5px;
+        color: #333;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+
 <h1 tabindex="0">Edytuj przejœcie</h1>
 <hr />
+
+<!-- Tooltip podgl¹du obrazka -->
+<div id="hoverPreview" class="hover-preview">
+    <img id="hoverPreviewImg" src="" alt="Podgl¹d lokacji" />
+    <div id="hoverPreviewLabel" class="preview-label"></div>
+</div>
 
 <div class="row">
     <!-- Lewa kolumna: Formularz -->
@@ -16,12 +83,34 @@
 
             <div class="form-group mb-3">
                 <label class="control-label fw-bold">1. Sk¹d wychodzimy?</label>
-                <select asp-for="SourceLocationId" class="form-select" asp-items="ViewBag.SourceLocationId" id="sourceSelect"></select>
+                <input type="hidden" asp-for="SourceLocationId" id="sourceSelectHidden" />
+                <div class="dropdown custom-dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle custom-dropdown-toggle" type="button" id="sourceDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span id="sourceDropdownText">-- Wybierz --</span>
+                    </button>
+                    <ul class="dropdown-menu custom-dropdown-menu" id="sourceDropdownMenu" aria-labelledby="sourceDropdownBtn">
+                        @foreach (var item in (SelectList)ViewBag.SourceLocationId)
+                        {
+                            <li><div class="custom-dropdown-item @(item.Selected ? "selected" : "")" data-value="@item.Value" data-image="@(((Dictionary<string, string>)ViewBag.ImageMapDict).GetValueOrDefault(item.Value, ""))">@item.Text</div></li>
+                        }
+                    </ul>
+                </div>
             </div>
 
             <div class="form-group mb-3">
                 <label class="control-label fw-bold">2. Dok¹d idziemy?</label>
-                <select asp-for="TargetLocationId" class="form-select" asp-items="ViewBag.TargetLocationId"></select>
+                <input type="hidden" asp-for="TargetLocationId" id="targetSelectHidden" />
+                <div class="dropdown custom-dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle custom-dropdown-toggle" type="button" id="targetDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span id="targetDropdownText">-- Wybierz --</span>
+                    </button>
+                    <ul class="dropdown-menu custom-dropdown-menu" id="targetDropdownMenu" aria-labelledby="targetDropdownBtn">
+                        @foreach (var item in (SelectList)ViewBag.TargetLocationId)
+                        {
+                            <li><div class="custom-dropdown-item @(item.Selected ? "selected" : "")" data-value="@item.Value" data-image="@(((Dictionary<string, string>)ViewBag.ImageMapDict).GetValueOrDefault(item.Value, ""))">@item.Text</div></li>
+                        }
+                    </ul>
+                </div>
             </div>
 
             <div class="form-group mb-3">
@@ -90,19 +179,40 @@
         </div>
     </div>
 
-    <!-- Prawa kolumna: Podgl¹d -->
+    <!-- Prawa kolumna: Podgl¹dy lokacji -->
     <div class="col-md-8">
-        <div class="card border-warning">
-            <div class="card-header bg-warning text-dark">
-                <i class="bi bi-cursor" aria-hidden="true"></i> 4. Kliknij, aby zmieniæ pozycjê strza³ki
-            </div>
-            <div class="card-body p-0 bg-dark">
-                <div id="imageContainer" style="position: relative; width: 100%; padding-bottom: 50%; cursor: crosshair; overflow: hidden;">
-                    <img id="previewImage" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: none;" alt="Podgl¹d lokalizacji Ÿród³owej" />
+        <div class="row">
+            <!-- Podgl¹d lokacji Ÿród³owej (SK¥D) -->
+            <div class="col-12 mb-3">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <i class="bi bi-cursor" aria-hidden="true"></i> 4. Lokacja Ÿród³owa (SK¥D) - Kliknij, aby zmieniæ pozycjê strza³ki
+                    </div>
+                    <div class="card-body p-0 bg-dark">
+                        <div id="imageContainer" style="position: relative; width: 100%; padding-bottom: 50%; cursor: crosshair; overflow: hidden;">
+                            <img id="previewImage" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: none;" alt="Podgl¹d lokalizacji Ÿród³owej" />
 
-                    <div id="marker" style="position: absolute; width: 30px; height: 30px; background: rgba(255,165,0,0.8); border: 3px solid white; border-radius: 50%; transform: translate(-50%, -50%); display: none; pointer-events: none; box-shadow: 0 0 10px black;"></div>
-                    
-                    <p id="noImageMsg" class="text-white-50 position-absolute top-50 start-50 translate-middle m-0">Brak podgl¹du.</p>
+                            <div id="marker" style="position: absolute; width: 30px; height: 30px; background: rgba(255,165,0,0.8); border: 3px solid white; border-radius: 50%; transform: translate(-50%, -50%); display: none; pointer-events: none; box-shadow: 0 0 10px black;"></div>
+                            
+                            <p id="noImageMsg" class="text-white-50 position-absolute top-50 start-50 translate-middle m-0">Brak podgl¹du.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Podgl¹d lokacji docelowej (DOK¥D) -->
+            <div class="col-12">
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                        <i class="bi bi-geo-alt" aria-hidden="true"></i> Lokacja docelowa (DOK¥D) - Podgl¹d
+                    </div>
+                    <div class="card-body p-0 bg-dark">
+                        <div id="targetImageContainer" style="position: relative; width: 100%; padding-bottom: 50%; overflow: hidden;">
+                            <img id="targetPreviewImage" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: none;" alt="Podgl¹d lokalizacji docelowej" />
+                            
+                            <p id="targetNoImageMsg" class="text-white-50 position-absolute top-50 start-50 translate-middle m-0">Brak podgl¹du lokacji docelowej.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -117,16 +227,30 @@
     <script>
         var imageMap = @Html.Raw(ViewBag.ImageMap ?? "{}");
 
-        var sourceSelect = document.getElementById("sourceSelect");
+        // Elementy podgl¹du g³ównego
         var previewImage = document.getElementById("previewImage");
+        var targetPreviewImage = document.getElementById("targetPreviewImage");
         var noImageMsg = document.getElementById("noImageMsg");
+        var targetNoImageMsg = document.getElementById("targetNoImageMsg");
         var marker = document.getElementById("marker");
         var imageContainer = document.getElementById("imageContainer");
         var inpX = document.getElementById("posX");
         var inpY = document.getElementById("posY");
 
-        function loadImageAndMarker() {
-            var id = sourceSelect.value;
+        // Elementy custom dropdown
+        var sourceHidden = document.getElementById("sourceSelectHidden");
+        var targetHidden = document.getElementById("targetSelectHidden");
+        var sourceDropdownText = document.getElementById("sourceDropdownText");
+        var targetDropdownText = document.getElementById("targetDropdownText");
+
+        // Elementy hover preview
+        var hoverPreview = document.getElementById("hoverPreview");
+        var hoverPreviewImg = document.getElementById("hoverPreviewImg");
+        var hoverPreviewLabel = document.getElementById("hoverPreviewLabel");
+
+        // Funkcja aktualizacji podgl¹du Ÿród³owego
+        function updateSourcePreview() {
+            var id = sourceHidden.value;
             var fileName = imageMap[id];
 
             if (fileName) {
@@ -139,7 +263,6 @@
                 var y = inpY.value;
                 marker.style.left = x + "%";
                 marker.style.top = y + "%";
-
             } else {
                 previewImage.style.display = "none";
                 noImageMsg.style.display = "block";
@@ -147,9 +270,146 @@
             }
         }
 
-        window.addEventListener('load', loadImageAndMarker);
-        sourceSelect.addEventListener("change", loadImageAndMarker);
+        // Funkcja aktualizacji podgl¹du docelowego
+        function updateTargetPreview() {
+            var id = targetHidden.value;
+            var fileName = imageMap[id];
 
+            if (fileName) {
+                targetPreviewImage.src = "/images/" + fileName;
+                targetPreviewImage.style.display = "block";
+                targetNoImageMsg.style.display = "none";
+            } else {
+                targetPreviewImage.style.display = "none";
+                targetNoImageMsg.style.display = "block";
+            }
+        }
+
+        // Inicjalizacja - ustaw tekst dropdown na podstawie wybranej wartoœci
+        function initDropdowns() {
+            // ZnajdŸ wybrany element Ÿród³owy
+            var selectedSource = document.querySelector('#sourceDropdownMenu .custom-dropdown-item.selected');
+            if (selectedSource) {
+                sourceDropdownText.textContent = selectedSource.textContent;
+            }
+
+            // ZnajdŸ wybrany element docelowy
+            var selectedTarget = document.querySelector('#targetDropdownMenu .custom-dropdown-item.selected');
+            if (selectedTarget) {
+                targetDropdownText.textContent = selectedTarget.textContent;
+            }
+
+            updateSourcePreview();
+            updateTargetPreview();
+        }
+
+        // Obs³uga custom dropdown - Ÿród³o
+        document.querySelectorAll('#sourceDropdownMenu .custom-dropdown-item').forEach(function(item) {
+            item.addEventListener('click', function() {
+                var value = this.getAttribute('data-value');
+                var text = this.textContent;
+                sourceHidden.value = value;
+                sourceDropdownText.textContent = text;
+                
+                // Usuñ zaznaczenie ze wszystkich i dodaj do wybranego
+                document.querySelectorAll('#sourceDropdownMenu .custom-dropdown-item').forEach(function(i) {
+                    i.classList.remove('selected');
+                });
+                this.classList.add('selected');
+                
+                updateSourcePreview();
+            });
+
+            // Hover preview
+            item.addEventListener('mouseenter', function(e) {
+                var imageFile = this.getAttribute('data-image');
+                var text = this.textContent;
+                if (imageFile && imageFile !== '') {
+                    hoverPreviewImg.src = "/images/" + imageFile;
+                    hoverPreviewLabel.textContent = text;
+                    hoverPreview.style.display = "block";
+                    positionPreview(e);
+                }
+            });
+
+            item.addEventListener('mousemove', function(e) {
+                positionPreview(e);
+            });
+
+            item.addEventListener('mouseleave', function() {
+                hoverPreview.style.display = "none";
+            });
+        });
+
+        // Obs³uga custom dropdown - cel
+        document.querySelectorAll('#targetDropdownMenu .custom-dropdown-item').forEach(function(item) {
+            item.addEventListener('click', function() {
+                var value = this.getAttribute('data-value');
+                var text = this.textContent;
+                targetHidden.value = value;
+                targetDropdownText.textContent = text;
+                
+                // Usuñ zaznaczenie ze wszystkich i dodaj do wybranego
+                document.querySelectorAll('#targetDropdownMenu .custom-dropdown-item').forEach(function(i) {
+                    i.classList.remove('selected');
+                });
+                this.classList.add('selected');
+                
+                updateTargetPreview();
+            });
+
+            // Hover preview
+            item.addEventListener('mouseenter', function(e) {
+                var imageFile = this.getAttribute('data-image');
+                var text = this.textContent;
+                if (imageFile && imageFile !== '') {
+                    hoverPreviewImg.src = "/images/" + imageFile;
+                    hoverPreviewLabel.textContent = text;
+                    hoverPreview.style.display = "block";
+                    positionPreview(e);
+                }
+            });
+
+            item.addEventListener('mousemove', function(e) {
+                positionPreview(e);
+            });
+
+            item.addEventListener('mouseleave', function() {
+                hoverPreview.style.display = "none";
+            });
+        });
+
+        // Funkcja pozycjonowania podgl¹du
+        function positionPreview(e) {
+            var x = e.clientX + 20;
+            var y = e.clientY - 100;
+
+            // Upewnij siê, ¿e preview nie wychodzi poza ekran
+            var previewWidth = 320;
+            var previewHeight = 220;
+            
+            if (x + previewWidth > window.innerWidth) {
+                x = e.clientX - previewWidth - 20;
+            }
+            if (y < 10) {
+                y = 10;
+            }
+            if (y + previewHeight > window.innerHeight) {
+                y = window.innerHeight - previewHeight - 10;
+            }
+
+            hoverPreview.style.left = x + "px";
+            hoverPreview.style.top = y + "px";
+        }
+
+        // Ukryj preview gdy dropdown siê zamyka
+        document.querySelectorAll('.dropdown').forEach(function(dropdown) {
+            dropdown.addEventListener('hidden.bs.dropdown', function() {
+                hoverPreview.style.display = "none";
+            });
+        });
+
+        // Klikanie na obrazku Ÿród³owym
         imageContainer.addEventListener("click", function(e) {
             if (previewImage.style.display === "none") return;
 
@@ -169,5 +429,8 @@
             marker.style.left = percentX + "%";
             marker.style.top = percentY + "%";
         });
+
+        // Inicjalizacja przy za³adowaniu strony
+        window.addEventListener('load', initDropdowns);
     </script>
 }
