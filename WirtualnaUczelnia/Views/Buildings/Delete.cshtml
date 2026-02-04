@@ -2,22 +2,78 @@
 
 @{
     ViewData["Title"] = "Usuñ budynek";
+    var relatedLocations = ViewBag.RelatedLocations as List<WirtualnaUczelnia.Models.Location> ?? new List<WirtualnaUczelnia.Models.Location>();
+    var relatedTransitions = ViewBag.RelatedTransitions as List<WirtualnaUczelnia.Models.Transition> ?? new List<WirtualnaUczelnia.Models.Transition>();
+    var hasRelatedData = ViewBag.HasRelatedData ?? false;
 }
 
 <h1 tabindex="0">Usuñ budynek</h1>
 
-@if (!string.IsNullOrEmpty((string)ViewData["ErrorMessage"]))
+@if (hasRelatedData)
 {
-    <div class="alert alert-danger" role="alert" tabindex="0">
-        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
-        @ViewData["ErrorMessage"]
+    <div class="alert alert-warning" role="alert" tabindex="0">
+        <h4 class="alert-heading"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Uwaga!</h4>
+        <p>Ten budynek posiada powi¹zane dane:</p>
+        <ul>
+            @if (relatedLocations.Any())
+            {
+                <li><strong>@relatedLocations.Count</strong> lokacji</li>
+            }
+            @if (relatedTransitions.Any())
+            {
+                <li><strong>@relatedTransitions.Count</strong> przejœæ</li>
+            }
+        </ul>
+        <hr />
+        <p class="mb-0"><strong>Usuniêcie budynku spowoduje równie¿ usuniêcie wszystkich powi¹zanych lokacji i przejœæ!</strong></p>
+    </div>
+
+    @if (relatedLocations.Any())
+    {
+        <div class="card mb-3">
+            <div class="card-header bg-secondary text-white">
+                <i class="bi bi-geo-alt" aria-hidden="true"></i> Powi¹zane lokacje do usuniêcia (@relatedLocations.Count)
+            </div>
+            <ul class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
+                @foreach (var location in relatedLocations)
+                {
+                    <li class="list-group-item">
+                        <strong>@location.Name</strong>
+                        @if (!string.IsNullOrEmpty(location.Description))
+                        {
+                            <small class="text-muted"> - @location.Description</small>
+                        }
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+
+    @if (relatedTransitions.Any())
+    {
+        <div class="card mb-3">
+            <div class="card-header bg-secondary text-white">
+                <i class="bi bi-arrow-left-right" aria-hidden="true"></i> Powi¹zane przejœcia do usuniêcia (@relatedTransitions.Count)
+            </div>
+            <ul class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
+                @foreach (var transition in relatedTransitions)
+                {
+                    <li class="list-group-item">
+                        <strong>@transition.SourceLocation?.Name</strong> ? <strong>@transition.TargetLocation?.Name</strong>
+                        <span class="badge bg-secondary ms-2">@transition.Direction</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+}
+else
+{
+    <div class="alert alert-info" role="alert" tabindex="0">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        Ten budynek nie posiada ¿adnych powi¹zanych lokacji ani przejœæ.
     </div>
 }
-
-<div class="alert alert-warning" role="alert" tabindex="0">
-    <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
-    <strong>Uwaga!</strong> Czy na pewno chcesz usun¹æ ten budynek? Ta operacja jest nieodwracalna.
-</div>
 
 <div class="card shadow-sm">
     <div class="card-header bg-danger text-white">
@@ -47,9 +103,22 @@
         <form asp-action="Delete" class="mt-3">
             <input type="hidden" asp-for="Id" />
             <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-danger" aria-label="PotwierdŸ usuniêcie budynku @Model.Name">
-                    <i class="bi bi-trash" aria-hidden="true"></i> Usuñ budynek
-                </button>
+                @if (hasRelatedData)
+                {
+                    <button type="submit" class="btn btn-danger" 
+                            onclick="return confirm('UWAGA: Usuniêcie tego budynku spowoduje równie¿ usuniêcie @relatedLocations.Count lokacji i @relatedTransitions.Count przejœæ. Ta operacja jest nieodwracalna. Czy na pewno chcesz kontynuowaæ?');"
+                            aria-label="PotwierdŸ usuniêcie budynku @Model.Name wraz z powi¹zanymi danymi">
+                        <i class="bi bi-trash" aria-hidden="true"></i> Usuñ budynek, @relatedLocations.Count lokacji i @relatedTransitions.Count przejœæ
+                    </button>
+                }
+                else
+                {
+                    <button type="submit" class="btn btn-danger" 
+                            onclick="return confirm('Czy na pewno chcesz usun¹æ ten budynek?');"
+                            aria-label="PotwierdŸ usuniêcie budynku @Model.Name">
+                        <i class="bi bi-trash" aria-hidden="true"></i> Usuñ budynek
+                    </button>
+                }
                 <a asp-action="Index" class="btn btn-secondary" aria-label="Anuluj i wróæ do listy budynków">
                     <i class="bi bi-x-lg" aria-hidden="true"></i> Anuluj
                 </a>

@@ -150,7 +150,7 @@ namespace WirtualnaUczelnia.Controllers
         }
 
         // GET: Buildings/Delete/5
-        public async Task<IActionResult> Delete(int? id, bool? saveChangesError = false)
+        public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
 
@@ -159,12 +159,22 @@ namespace WirtualnaUczelnia.Controllers
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (building == null) return NotFound();
 
-            if (saveChangesError.GetValueOrDefault())
-            {
-                ViewData["ErrorMessage"] =
-                    "Nie mo¿na usun¹æ budynku, poniewa¿ s¹ do niego przypisane lokalizacje. " +
-                    "Usuñ najpierw lokalizacje powi¹zane z tym budynkiem.";
-            }
+            // Pobierz powi¹zane lokacje
+            var relatedLocations = await _context.Locations
+                .Where(l => l.BuildingId == id)
+                .ToListAsync();
+
+            // Pobierz powi¹zane przejœcia (przez lokacje)
+            var locationIds = relatedLocations.Select(l => l.Id).ToList();
+            var relatedTransitions = await _context.Transitions
+                .Include(t => t.SourceLocation)
+                .Include(t => t.TargetLocation)
+                .Where(t => locationIds.Contains(t.SourceLocationId) || locationIds.Contains(t.TargetLocationId))
+                .ToListAsync();
+
+            ViewBag.RelatedLocations = relatedLocations;
+            ViewBag.RelatedTransitions = relatedTransitions;
+            ViewBag.HasRelatedData = relatedLocations.Any() || relatedTransitions.Any();
 
             return View(building);
         }
@@ -177,16 +187,46 @@ namespace WirtualnaUczelnia.Controllers
             var building = await _context.Buildings.FindAsync(id);
             if (building == null) return RedirectToAction(nameof(Index));
 
-            try
+            // Pobierz powi¹zane lokacje
+            var relatedLocations = await _context.Locations
+                .Where(l => l.BuildingId == id)
+                .ToListAsync();
+
+            var locationIds = relatedLocations.Select(l => l.Id).ToList();
+
+            // Pobierz i usuñ powi¹zane przejœcia
+            var relatedTransitions = await _context.Transitions
+                .Where(t => locationIds.Contains(t.SourceLocationId) || locationIds.Contains(t.TargetLocationId))
+                .ToListAsync();
+
+            int transitionsCount = relatedTransitions.Count;
+            int locationsCount = relatedLocations.Count;
+
+            if (relatedTransitions.Any())
             {
-                _context.Buildings.Remove(building);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                _context.Transitions.RemoveRange(relatedTransitions);
             }
-            catch (DbUpdateException)
+
+            // Usuñ powi¹zane lokacje
+            if (relatedLocations.Any())
             {
-                return RedirectToAction(nameof(Delete), new { id = id, saveChangesError = true });
+                _context.Locations.RemoveRange(relatedLocations);
             }
+
+            // Usuñ budynek
+            _context.Buildings.Remove(building);
+            await _context.SaveChangesAsync();
+
+            if (transitionsCount > 0 || locationsCount > 0)
+            {
+                TempData["Message"] = $"Budynek \"{building.Name}\" zosta³ usuniêty wraz z {locationsCount} lokacjami i {transitionsCount} przejœciami.";
+            }
+            else
+            {
+                TempData["Message"] = $"Budynek \"{building.Name}\" zosta³ usuniêty.";
+            }
+
+            return RedirectToAction(nameof(Index));
         }
 
         private bool BuildingExists(int id)

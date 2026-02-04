@@ -336,6 +336,16 @@ namespace WirtualnaUczelnia.Controllers
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (location == null) return NotFound();
 
+            // SprawdŸ czy lokacja jest u¿ywana w przejœciach (jako Ÿród³o lub cel)
+            var relatedTransitions = await _context.Transitions
+                .Include(t => t.SourceLocation)
+                .Include(t => t.TargetLocation)
+                .Where(t => t.SourceLocationId == id || t.TargetLocationId == id)
+                .ToListAsync();
+
+            ViewBag.RelatedTransitions = relatedTransitions;
+            ViewBag.HasRelatedTransitions = relatedTransitions.Any();
+
             return View(location);
         }
 
@@ -347,11 +357,31 @@ namespace WirtualnaUczelnia.Controllers
             var location = await _context.Locations.FindAsync(id);
             if (location != null)
             {
+                // Najpierw usuñ wszystkie powi¹zane przejœcia (jako Ÿród³o lub cel)
+                var relatedTransitions = await _context.Transitions
+                    .Where(t => t.SourceLocationId == id || t.TargetLocationId == id)
+                    .ToListAsync();
+
+                if (relatedTransitions.Any())
+                {
+                    _context.Transitions.RemoveRange(relatedTransitions);
+                }
+
+                // Nastêpnie usuñ lokacjê
                 _context.Locations.Remove(location);
+
+                await _context.SaveChangesAsync();
+                
+                if (relatedTransitions.Any())
+                {
+                    TempData["Message"] = $"Lokacja \"{location.Name}\" oraz {relatedTransitions.Count} powi¹zanych przejœæ zosta³o usuniêtych.";
+                }
+                else
+                {
+                    TempData["Message"] = $"Lokacja \"{location.Name}\" zosta³a usuniêta.";
+                }
             }
 
-            await _context.SaveChangesAsync();
-            TempData["Message"] = "Lokacja zosta³a usuniêta.";
             return RedirectToAction(nameof(Index));
         }
 
